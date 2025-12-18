@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.testing.final_mobile.R;
 import com.testing.final_mobile.data.model.Post;
+import com.testing.final_mobile.ui.activity.PostDetailActivity;
 import com.testing.final_mobile.utils.TimestampConverter;
 
 public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
@@ -96,6 +97,12 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
                 shareIntent.setType("text/plain");
                 shareIntent.putExtra(Intent.EXTRA_TEXT, post.getContent());
                 itemView.getContext().startActivity(Intent.createChooser(shareIntent, "Share post via"));
+            });
+
+            itemView.setOnClickListener(v -> {
+                Intent intent = new Intent(itemView.getContext(), PostDetailActivity.class);
+                intent.putExtra(PostDetailActivity.EXTRA_POST_ID, post.getPostId());
+                itemView.getContext().startActivity(intent);
             });
         }
     }
