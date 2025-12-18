@@ -1,5 +1,6 @@
 package com.testing.final_mobile.ui.adapter;
 
+import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -50,7 +51,7 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
     }
 
     class PostViewHolder extends RecyclerView.ViewHolder {
-        private final ImageView ivUserAvatar, ivPostImage;
+        private final ImageView ivUserAvatar, ivPostImage, btnShare;
         private final TextView tvUserName, tvPostDate, tvPostContent, tvLikeCount, tvCommentCount;
 
         public PostViewHolder(@NonNull View itemView) {
@@ -62,6 +63,7 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
             tvPostContent = itemView.findViewById(R.id.tvPostContent);
             tvLikeCount = itemView.findViewById(R.id.tvLikeCount);
             tvCommentCount = itemView.findViewById(R.id.tvCommentCount);
+            btnShare = itemView.findViewById(R.id.btnShare);
         }
 
         public void bind(Post post) {
@@ -70,19 +72,16 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
             tvLikeCount.setText(String.valueOf(post.getLikeCount()));
             tvCommentCount.setText(String.valueOf(post.getCommentCount()));
             
-            // Format and display timestamp
             if (post.getTimestamp() != null) {
                 tvPostDate.setText(TimestampConverter.getTimeAgo(post.getTimestamp()));
             }
 
-            // Load user avatar
             Glide.with(itemView.getContext())
                     .load(post.getUserAvatarUrl())
                     .placeholder(R.drawable.placeholder_avatar)
                     .circleCrop()
                     .into(ivUserAvatar);
 
-            // Load post image if it exists
             if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
                 ivPostImage.setVisibility(View.VISIBLE);
                 Glide.with(itemView.getContext())
@@ -91,6 +90,13 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
             } else {
                 ivPostImage.setVisibility(View.GONE);
             }
+
+            btnShare.setOnClickListener(v -> {
+                Intent shareIntent = new Intent(Intent.ACTION_SEND);
+                shareIntent.setType("text/plain");
+                shareIntent.putExtra(Intent.EXTRA_TEXT, post.getContent());
+                itemView.getContext().startActivity(Intent.createChooser(shareIntent, "Share post via"));
+            });
         }
     }
 }
