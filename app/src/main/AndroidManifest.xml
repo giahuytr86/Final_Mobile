@@ -13,6 +13,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Final_Mobile">
         <activity
+            android:name=".CommentsActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.LoginActivity"
             android:exported="false" />
         <activity

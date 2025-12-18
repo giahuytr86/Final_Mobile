@@ -6,7 +6,8 @@
     <string name="register">Register</string>
     <string name="email_hint">Email</string>
     <string name="password_hint">Password</string>
-    <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
-    <string name="title_activity_login">Login</string>
+    <string name="comments_title">Comments</string>
+    <string name="reply_action">Reply</string>
+    <string name="replying_to">Replying to %s</string>
+    <string name="write_comment">Write a comment...</string>
 </resources>
