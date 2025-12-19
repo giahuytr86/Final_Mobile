@@ -1,4 +1,4 @@
-package com.testing.final_mobile.ui;
+package com.testing.final_mobile.ui.activity;
 
 import android.os.Bundle;
 

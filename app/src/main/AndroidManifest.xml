@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
+        android:name=".MyApplication"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -12,19 +13,25 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Final_Mobile">
         <activity
-            android:name=".ui.LoginActivity"
+            android:name=".ui.activity.PostDetailActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.OtpActivity"
+            android:name=".ui.activity.CommentsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activity.LoginActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.activity.OtpActivity"
             android:exported="false" />
         <activity
             android:name=".OTPActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.RegisterActivity"
+            android:name=".ui.activity.RegisterActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.ChatActivity"
+            android:name=".ui.activity.ChatActivity"
             android:exported="false" />
         <activity
             android:name=".ui.login.LoginActivity"
