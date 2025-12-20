@@ -2,6 +2,7 @@ package com.testing.final_mobile.data.remote;
 
 import android.util.Log;
 
+import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -18,6 +19,7 @@ public class PostRemoteDataSource {
 
     private final FirestoreService firestoreService;
 
+    //<editor-fold desc="Interfaces">
     public interface OnPostsFetchedListener {
         void onPostsFetched(List<Post> posts);
         void onError(Exception e);
@@ -28,8 +30,27 @@ public class PostRemoteDataSource {
         void onError(Exception e);
     }
 
+    public interface OnPostCreatedListener {
+        void onPostCreated(DocumentReference documentReference);
+        void onError(Exception e);
+    }
+    //</editor-fold>
+
     public PostRemoteDataSource(FirestoreService firestoreService) {
         this.firestoreService = firestoreService;
+    }
+
+    public void createPost(Post newPost, OnPostCreatedListener listener) {
+        firestoreService.addDocument(POST_COLLECTION, newPost, task -> {
+            if (task.isSuccessful()) {
+                listener.onPostCreated(task.getResult());
+            } else {
+                Log.e(TAG, "Error creating post", task.getException());
+                if (task.getException() != null) {
+                    listener.onError(task.getException());
+                }
+            }
+        });
     }
 
     public void fetchAllPosts(OnPostsFetchedListener listener) {
