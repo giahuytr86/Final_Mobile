@@ -1,4 +1,4 @@
-package com.testing.final_mobile.data;
+package com.testing.final_mobile.data.remote;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;

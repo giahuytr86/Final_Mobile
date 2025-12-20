@@ -1,38 +1,48 @@
 package com.testing.final_mobile.data.model;
 
+import androidx.annotation.NonNull;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
+import androidx.room.TypeConverters;
+
+import com.google.firebase.firestore.Exclude;
 import com.google.firebase.firestore.ServerTimestamp;
+import com.testing.final_mobile.data.local.DateConverter;
+
 import java.util.Date;
 
+@Entity(tableName = "posts")
+@TypeConverters(DateConverter.class)
 public class Post {
+
+    @PrimaryKey
+    @NonNull
     private String postId;
+
     private String userId;
     private String userName;
     private String userAvatarUrl;
     private String content;
     private String imageUrl;
-    private @ServerTimestamp Date timestamp;
+
+    @ServerTimestamp
+    private Date timestamp;
+
     private int likeCount;
     private int commentCount;
 
-    // Empty constructor for Firebase
-    public Post() {}
-
-    public Post(String userId, String userName, String userAvatarUrl, String content, String imageUrl) {
-        this.userId = userId;
-        this.userName = userName;
-        this.userAvatarUrl = userAvatarUrl;
-        this.content = content;
-        this.imageUrl = imageUrl;
-        this.likeCount = 0;
-        this.commentCount = 0;
+    // Empty constructor for Firebase/Room
+    public Post() {
+        this.postId = ""; // Ensure postId is not null
     }
 
     // Getters and Setters
+    @NonNull
     public String getPostId() {
         return postId;
     }
 
-    public void setPostId(String postId) {
+    public void setPostId(@NonNull String postId) {
         this.postId = postId;
     }
 

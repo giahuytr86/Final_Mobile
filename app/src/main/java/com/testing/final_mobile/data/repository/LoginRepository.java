@@ -1,5 +1,7 @@
-package com.testing.final_mobile.data;
+package com.testing.final_mobile.data.repository;
 
+import com.testing.final_mobile.data.LoginDataSource;
+import com.testing.final_mobile.data.Result;
 import com.testing.final_mobile.data.model.LoggedInUser;
 
 /**
