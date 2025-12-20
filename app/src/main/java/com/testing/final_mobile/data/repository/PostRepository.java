@@ -11,7 +11,8 @@ import androidx.lifecycle.LiveData;
 import com.testing.final_mobile.data.local.AppDatabase;
 import com.testing.final_mobile.data.local.PostDao;
 import com.testing.final_mobile.data.model.Post;
-import com.testing.final_mobile.data.remote.FirebaseManager;
+import com.testing.final_mobile.data.remote.PostRemoteDataSource;
+import com.testing.final_mobile.data.remote.core.FirestoreService;
 
 import java.util.Collections;
 import java.util.List;
@@ -21,17 +22,16 @@ public class PostRepository {
     private static final String TAG = "PostRepository";
 
     private final PostDao postDao;
-    private final FirebaseManager remoteDataSource;
+    private final PostRemoteDataSource remoteDataSource;
     private final Application application;
 
     public PostRepository(Application application) {
         AppDatabase database = AppDatabase.getDatabase(application);
         this.postDao = database.postDao();
-        this.remoteDataSource = new FirebaseManager(); // The single point of contact for remote data
+        // The repository now uses the specific data source, which in turn uses the generic service.
+        this.remoteDataSource = new PostRemoteDataSource(new FirestoreService());
         this.application = application;
     }
-
-    // --- Public API for ViewModels ---
 
     public LiveData<List<Post>> getAllPosts() {
         refreshPostsFromServer();
@@ -43,15 +43,12 @@ public class PostRepository {
         return postDao.getPostById(postId);
     }
 
-    // --- Data Refreshing Logic ---
-
     private void refreshPostsFromServer() {
         if (!isNetworkAvailable()) return;
 
-        remoteDataSource.fetchAllPosts(new FirebaseManager.OnPostsFetchedListener() {
+        remoteDataSource.fetchAllPosts(new PostRemoteDataSource.OnPostsFetchedListener() {
             @Override
             public void onPostsFetched(List<Post> posts) {
-                // Save the fetched data to the local database
                 AppDatabase.databaseWriteExecutor.execute(() -> {
                     postDao.insertAll(posts);
                     Log.d(TAG, "Successfully refreshed " + posts.size() + " posts from server.");
@@ -68,7 +65,7 @@ public class PostRepository {
     private void refreshPostFromServer(String postId) {
         if (!isNetworkAvailable()) return;
 
-        remoteDataSource.fetchPostById(postId, new FirebaseManager.OnPostFetchedListener() {
+        remoteDataSource.fetchPostById(postId, new PostRemoteDataSource.OnPostFetchedListener() {
             @Override
             public void onPostFetched(Post post) {
                 AppDatabase.databaseWriteExecutor.execute(() -> {
@@ -83,8 +80,6 @@ public class PostRepository {
             }
         });
     }
-
-    // --- Utility Methods ---
 
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
