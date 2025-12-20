@@ -7,6 +7,7 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
+import com.testing.final_mobile.data.local.converters.DateConverter;
 import com.testing.final_mobile.data.model.Post;
 
 import java.util.concurrent.ExecutorService;

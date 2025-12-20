@@ -1,4 +1,4 @@
-package com.testing.final_mobile.data.local;
+package com.testing.final_mobile.data.local.converters;
 
 import androidx.room.TypeConverter;
 

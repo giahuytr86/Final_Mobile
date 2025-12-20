@@ -5,9 +5,8 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.room.TypeConverters;
 
-import com.google.firebase.firestore.Exclude;
 import com.google.firebase.firestore.ServerTimestamp;
-import com.testing.final_mobile.data.local.DateConverter;
+import com.testing.final_mobile.data.local.converters.DateConverter;
 
 import java.util.Date;
 
