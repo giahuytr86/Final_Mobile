@@ -1,90 +1,69 @@
 package com.testing.final_mobile.ui.activity;
 
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.testing.final_mobile.R;
+import com.testing.final_mobile.databinding.AcitivityCreatePostBinding;
 import com.testing.final_mobile.ui.viewmodel.CreatePostViewModel;
 
 public class CreatePostActivity extends AppCompatActivity {
 
-    private EditText etContent;
-    private TextView btnPost;
-    private ImageView btnClose;
-
+    private AcitivityCreatePostBinding binding;
     private CreatePostViewModel viewModel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.acitivity_create_post);
+        binding = AcitivityCreatePostBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
-        // 1. Initialize ViewModel
         viewModel = new ViewModelProvider(this).get(CreatePostViewModel.class);
 
-        etContent = findViewById(R.id.etContent);
-        btnPost = findViewById(R.id.btnPost);
-        btnClose = findViewById(R.id.btnClose);
-
-        setupObservers();
         setupClickListeners();
+        observeViewModel();
     }
 
-    private void setupObservers() {
-        // 3. Observe LiveData to restore content on configuration change
-        viewModel.getPostContent().observe(this, content -> {
-            if (!content.equals(etContent.getText().toString())) {
-                etContent.setText(content);
-                etContent.setSelection(content.length()); // Move cursor to the end
+    private void setupClickListeners() {
+        binding.btnClose.setOnClickListener(v -> finish());
+
+        binding.btnPost.setOnClickListener(v -> {
+            String content = binding.etContent.getText().toString().trim();
+            if (content.isEmpty()) {
+                Toast.makeText(this, "What's happening?", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            // For now, we pass a null imageUrl. You can add image selection logic later.
+            viewModel.createPost(content, null);
+        });
+    }
+
+    private void observeViewModel() {
+        viewModel.isLoading.observe(this, isLoading -> {
+            if (isLoading) {
+                binding.btnPost.setEnabled(false);
+                binding.btnPost.setText("POSTING...");
+                // You could also show a ProgressBar here
+            } else {
+                binding.btnPost.setEnabled(true);
+                binding.btnPost.setText("POST");
             }
         });
 
-        // 5. Observe for successful post
-        viewModel.postSuccessful.observe(this, successful -> {
-            if (successful) {
+        viewModel.isPostCreated.observe(this, isCreated -> {
+            if (isCreated) {
                 Toast.makeText(this, "Posted successfully!", Toast.LENGTH_SHORT).show();
                 finish();
             }
         });
 
-        // 5. Observe for errors
-        viewModel.error.observe(this, errorMessage -> {
-            if (errorMessage != null && !errorMessage.isEmpty()) {
-                Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
-                btnPost.setEnabled(true); // Re-enable post button on error
+        viewModel.error.observe(this, error -> {
+            if (error != null && !error.isEmpty()) {
+                Toast.makeText(this, error, Toast.LENGTH_LONG).show();
             }
-        });
-    }
-
-    private void setupClickListeners() {
-        btnClose.setOnClickListener(v -> finish());
-
-        // 2. Add TextWatcher to save content to ViewModel
-        etContent.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {}
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                viewModel.setPostContent(s.toString());
-            }
-        });
-
-        // 4. Call ViewModel to create the post
-        btnPost.setOnClickListener(v -> {
-            btnPost.setEnabled(false); // Prevent multiple clicks
-            viewModel.createPost();
         });
     }
 }

@@ -8,6 +8,7 @@ import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 
+import com.google.firebase.firestore.DocumentReference;
 import com.testing.final_mobile.data.local.AppDatabase;
 import com.testing.final_mobile.data.local.PostDao;
 import com.testing.final_mobile.data.model.Post;
@@ -25,12 +26,38 @@ public class PostRepository {
     private final PostRemoteDataSource remoteDataSource;
     private final Application application;
 
+    public interface OnPostCreatedListener {
+        void onPostCreated();
+        void onError(Exception e);
+    }
+
     public PostRepository(Application application) {
         AppDatabase database = AppDatabase.getDatabase(application);
         this.postDao = database.postDao();
-        // The repository now uses the specific data source, which in turn uses the generic service.
         this.remoteDataSource = new PostRemoteDataSource(new FirestoreService());
         this.application = application;
+    }
+
+    public void createPost(Post newPost, OnPostCreatedListener listener) {
+        if (!isNetworkAvailable()) {
+            listener.onError(new Exception("No internet connection"));
+            return;
+        }
+
+        remoteDataSource.createPost(newPost, new PostRemoteDataSource.OnPostCreatedListener() {
+            @Override
+            public void onPostCreated(DocumentReference documentReference) {
+                // After successfully creating the post on Firebase, we can also update our local DB.
+                // We fetch the newly created post to get all server-side generated fields (like timestamp).
+                refreshPostFromServer(documentReference.getId());
+                listener.onPostCreated();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                listener.onError(e);
+            }
+        });
     }
 
     public LiveData<List<Post>> getAllPosts() {
@@ -51,7 +78,6 @@ public class PostRepository {
             public void onPostsFetched(List<Post> posts) {
                 AppDatabase.databaseWriteExecutor.execute(() -> {
                     postDao.insertAll(posts);
-                    Log.d(TAG, "Successfully refreshed " + posts.size() + " posts from server.");
                 });
             }
 
@@ -70,7 +96,6 @@ public class PostRepository {
             public void onPostFetched(Post post) {
                 AppDatabase.databaseWriteExecutor.execute(() -> {
                     postDao.insertAll(Collections.singletonList(post));
-                    Log.d(TAG, "Successfully refreshed post " + postId + " from server.");
                 });
             }
 

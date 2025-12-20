@@ -1,6 +1,7 @@
 package com.testing.final_mobile.ui.viewmodel;
 
 import android.app.Application;
+import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
@@ -11,65 +12,80 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.testing.final_mobile.data.model.Post;
+import com.testing.final_mobile.data.model.User;
+import com.testing.final_mobile.data.repository.PostRepository;
 
 public class CreatePostViewModel extends AndroidViewModel {
 
-    private final MutableLiveData<String> postContent = new MutableLiveData<String>("");
-    private final FirebaseFirestore db;
-    private final FirebaseAuth mAuth;
+    private static final String TAG = "CreatePostViewModel";
 
-    private final MutableLiveData<Boolean> _postSuccessful = new MutableLiveData<>(false);
-    public LiveData<Boolean> postSuccessful = _postSuccessful;
+    private final PostRepository postRepository;
+
+    private final MutableLiveData<Boolean> _isLoading = new MutableLiveData<>(false);
+    public LiveData<Boolean> isLoading = _isLoading;
+
+    private final MutableLiveData<Boolean> _isPostCreated = new MutableLiveData<>(false);
+    public LiveData<Boolean> isPostCreated = _isPostCreated;
 
     private final MutableLiveData<String> _error = new MutableLiveData<>();
     public LiveData<String> error = _error;
 
-
     public CreatePostViewModel(@NonNull Application application) {
         super(application);
-        db = FirebaseFirestore.getInstance();
-        mAuth = FirebaseAuth.getInstance();
+        postRepository = new PostRepository(application);
     }
 
-    public LiveData<String> getPostContent() {
-        return postContent;
-    }
+    public void createPost(String content, String imageUrl) {
+        _isLoading.setValue(true);
 
-    public void setPostContent(String content) {
-        postContent.setValue(content);
-    }
-
-    public void createPost() {
-        String content = postContent.getValue();
-        if (content == null || content.trim().isEmpty()) {
-            _error.setValue("Content cannot be empty");
+        FirebaseUser firebaseUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (firebaseUser == null) {
+            _error.setValue("User not logged in.");
+            _isLoading.setValue(false);
             return;
         }
 
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser == null) {
-            _error.setValue("You need to be logged in to post.");
-            return;
-        }
+        // Fetch user details to include in the post
+        // NOTE: In a larger app, this user data should be sourced from a UserRepository
+        String userId = firebaseUser.getUid();
+        FirebaseFirestore.getInstance().collection("users").document(userId).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    if (documentSnapshot.exists()) {
+                        User user = documentSnapshot.toObject(User.class);
+                        if (user != null) {
+                            Post newPost = new Post();
+                            newPost.setUserId(userId);
+                            newPost.setUserName(user.getDisplayName());
+                            newPost.setUserAvatarUrl(user.getAvatar());
+                            newPost.setContent(content);
+                            newPost.setImageUrl(imageUrl);
 
-        String userId = currentUser.getUid();
-        String userName = currentUser.getDisplayName();
-        String userAvatarUrl = currentUser.getPhotoUrl() != null ? currentUser.getPhotoUrl().toString() : "";
+                            postRepository.createPost(newPost, new PostRepository.OnPostCreatedListener() {
+                                @Override
+                                public void onPostCreated() {
+                                    _isLoading.setValue(false);
+                                    _isPostCreated.setValue(true);
+                                }
 
-        Post newPost = new Post(userId, userName, userAvatarUrl, content.trim(), null);
-
-        db.collection("posts")
-                .add(newPost)
-                .addOnSuccessListener(documentReference -> {
-                    _postSuccessful.setValue(true);
+                                @Override
+                                public void onError(Exception e) {
+                                    _isLoading.setValue(false);
+                                    _error.setValue(e.getMessage());
+                                }
+                            });
+                        } else {
+                            _isLoading.setValue(false);
+                            _error.setValue("Could not retrieve user data.");
+                        }
+                    } else {
+                        _isLoading.setValue(false);
+                        _error.setValue("User data not found.");
+                    }
                 })
                 .addOnFailureListener(e -> {
-                    _error.setValue("Error: " + e.getMessage());
+                    _isLoading.setValue(false);
+                    _error.setValue("Failed to fetch user data: " + e.getMessage());
+                    Log.e(TAG, "Failed to fetch user data", e);
                 });
-    }
-
-    @Override
-    protected void onCleared() {
-        super.onCleared();
     }
 }

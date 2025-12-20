@@ -16,14 +16,6 @@ public class FirestoreService {
         this.db = FirebaseFirestore.getInstance();
     }
 
-    public CollectionReference getCollection(String collectionPath) {
-        return db.collection(collectionPath);
-    }
-
-    public DocumentReference getDocument(String collectionPath, String documentId) {
-        return db.collection(collectionPath).document(documentId);
-    }
-
     public void getCollection(Query query, OnCompleteListener<QuerySnapshot> listener) {
         query.get().addOnCompleteListener(listener);
     }
@@ -32,5 +24,16 @@ public class FirestoreService {
         docRef.get().addOnCompleteListener(listener);
     }
 
-    // You can add more generic methods here in the future, e.g., for adding/updating documents.
+    public <T> void addDocument(String collectionPath, T data, OnCompleteListener<DocumentReference> listener) {
+        db.collection(collectionPath).add(data).addOnCompleteListener(listener);
+    }
+
+    // Helper methods to get references if needed
+    public CollectionReference getCollection(String collectionPath) {
+        return db.collection(collectionPath);
+    }
+
+    public DocumentReference getDocument(String collectionPath, String documentId) {
+        return db.collection(collectionPath).document(documentId);
+    }
 }
