@@ -1,6 +1,4 @@
-package com.testing.final_mobile.data;
-
-import androidx.annotation.NonNull;
+package com.testing.final_mobile.data.repository;
 
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.EventListener;
@@ -9,12 +7,9 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.ListenerRegistration;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
-import com.testing.final_mobile.data.FirebaseManager;
+import com.testing.final_mobile.data.remote.FirebaseManager;
 import com.testing.final_mobile.data.model.Comment;
 import com.testing.final_mobile.data.model.CommentLike;
-
-import java.util.HashMap;
-import java.util.Map;
 
 public class CommentRepository {
 
