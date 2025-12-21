@@ -6,23 +6,15 @@
     android:gravity="start"
     android:orientation="horizontal">
 
-    <com.google.android.material.imageview.ShapeableImageView
-        android:id="@+id/ivAvatar"
-        android:layout_width="32dp"
-        android:layout_height="32dp"
-        android:scaleType="centerCrop"
-        android:src="@drawable/placeholder_avatar"
-        android:layout_marginEnd="8dp"/>
-
+    <!-- Changed background to a gray/input drawable and text to black for contrast -->
     <TextView
         android:id="@+id/tvMessage"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:background="@drawable/bg_input_rounded"
-        android:backgroundTint="#E5E7EB"
         android:maxWidth="260dp"
         android:padding="12dp"
-        android:text="Hello there!"
+        android:text="Hi! How are you?"
         android:textColor="@color/black"
         android:textSize="16sp" />
 </LinearLayout>
