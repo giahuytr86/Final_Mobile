@@ -12,7 +12,6 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.testing.final_mobile.data.model.Post;
-import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.data.repository.PostRepository;
 
 public class CreatePostViewModel extends AndroidViewModel {
