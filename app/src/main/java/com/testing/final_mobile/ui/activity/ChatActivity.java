@@ -1,87 +1,83 @@
 package com.testing.final_mobile.ui.activity;
 
 import android.os.Bundle;
-import android.text.TextUtils;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.TextView;
+import android.view.View;
+import android.widget.Toast;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import com.testing.final_mobile.R;
-import com.example.final_mobile.data.model.Message;
-import com.testing.final_mobile.ui.adapter.MessageAdapter;
-import com.testing.final_mobile.ui.viewmodel.ChatViewModel;
-import com.google.firebase.Timestamp;
-import com.google.firebase.auth.FirebaseAuth;
 
-import java.util.Date;
+import com.testing.final_mobile.databinding.ActivityChatBinding;
+import com.testing.final_mobile.ui.adapter.ChatMessageAdapter;
+import com.testing.final_mobile.ui.viewmodel.ChatViewModel;
 
 public class ChatActivity extends AppCompatActivity {
 
-    private RecyclerView rvChat;
-    private EditText etMessage;
-    private ImageView btnSend, btnBack;
-    private TextView tvChatName;
+    public static final String EXTRA_CONVERSATION_ID = "EXTRA_CONVERSATION_ID";
+    public static final String EXTRA_OTHER_USER_ID = "EXTRA_OTHER_USER_ID";
 
-    private MessageAdapter adapter;
+    private ActivityChatBinding binding;
     private ChatViewModel viewModel;
+    private ChatMessageAdapter adapter;
     private String conversationId;
-    private String currentUserId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_chat);
+        binding = ActivityChatBinding.inflate(getLayoutInflater());
+        setContentView(binding.getRoot());
 
-        // 1. Get Intent Data
-        conversationId = getIntent().getStringExtra("conversationId");
-        String chatName = getIntent().getStringExtra("chatName"); // Optional pass name
-
-        currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-
-        // 2. Initialize Views (IDs from your activity_chat.xml)
-        rvChat = findViewById(R.id.rvChat);
-        etMessage = findViewById(R.id.etMessage);
-        btnSend = findViewById(R.id.btnSend);
-        btnBack = findViewById(R.id.btnBack);
-        tvChatName = findViewById(R.id.tvChatName);
-
-        if (chatName != null) tvChatName.setText(chatName);
-
-        // 3. Setup RecyclerView
-        adapter = new MessageAdapter(this);
-        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
-        layoutManager.setStackFromEnd(true); // Messages start from bottom
-        rvChat.setLayoutManager(layoutManager);
-        rvChat.setAdapter(adapter);
-
-        // 4. Setup ViewModel
-        viewModel = new ViewModelProvider(this).get(ChatViewModel.class);
-
-        // 5. Listen for Messages
-        if (conversationId != null) {
-            viewModel.getMessages(conversationId).observe(this, messages -> {
-                adapter.setList(messages);
-                if (messages.size() > 0) {
-                    rvChat.smoothScrollToPosition(messages.size() - 1);
-                }
-            });
+        conversationId = getIntent().getStringExtra(EXTRA_CONVERSATION_ID);
+        if (conversationId == null) {
+            Toast.makeText(this, "Conversation ID is missing.", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
         }
 
-        // 6. Click Listeners
-        btnSend.setOnClickListener(v -> sendMessage());
-        btnBack.setOnClickListener(v -> finish());
+        viewModel = new ViewModelProvider(this).get(ChatViewModel.class);
+
+        setupRecyclerView();
+        setupClickListeners();
+        observeViewModel();
     }
 
-    private void sendMessage() {
-        String content = etMessage.getText().toString().trim();
-        if (TextUtils.isEmpty(content) || conversationId == null) return;
+    private void setupRecyclerView() {
+        adapter = new ChatMessageAdapter();
+        LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        layoutManager.setStackFromEnd(true);
+        binding.rvMessages.setLayoutManager(layoutManager);
+        binding.rvMessages.setAdapter(adapter);
+    }
 
-        Message message = new Message(currentUserId, content, new Timestamp(new Date()));
+    private void setupClickListeners() {
+        binding.toolbar.setNavigationOnClickListener(v -> finish());
 
-        viewModel.sendMessage(conversationId, message);
-        etMessage.setText("");
+        binding.btnSend.setOnClickListener(v -> {
+            String messageText = binding.etMessage.getText().toString().trim();
+            if (!messageText.isEmpty()) {
+                viewModel.sendMessage(conversationId, messageText);
+                binding.etMessage.setText("");
+            }
+        });
+    }
+
+    private void observeViewModel() {
+        viewModel.getMessagesForConversation(conversationId).observe(this, messages -> {
+            if (messages != null) {
+                adapter.submitList(messages);
+                binding.rvMessages.scrollToPosition(messages.size() - 1);
+            }
+        });
+
+        viewModel.isSending.observe(this, isSending -> {
+            binding.btnSend.setEnabled(!isSending);
+        });
+
+        viewModel.error.observe(this, error -> {
+            if (error != null && !error.isEmpty()) {
+                Toast.makeText(this, error, Toast.LENGTH_SHORT).show();
+            }
+        });
     }
 }

@@ -1,20 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    android:gravity="start"
-    android:orientation="horizontal">
+    android:orientation="horizontal"
+    android:padding="4dp"
+    android:gravity="start">
 
-    <!-- Changed background to a gray/input drawable and text to black for contrast -->
+    <com.google.android.material.imageview.ShapeableImageView
+        android:id="@+id/iv_sender_avatar"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:scaleType="centerCrop"
+        android:layout_marginEnd="8dp"
+        android:layout_gravity="bottom"
+        app:shapeAppearanceOverlay="@style/CircleImage" />
+
     <TextView
-        android:id="@+id/tvMessage"
+        android:id="@+id/tv_message_body"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_input_rounded"
-        android:maxWidth="260dp"
+        android:background="@drawable/bg_message_left"
         android:padding="12dp"
-        android:text="Hi! How are you?"
-        android:textColor="@color/black"
-        android:textSize="16sp" />
+        android:textColor="@android:color/black"
+        android:text="This is a message from another user." />
+
 </LinearLayout>

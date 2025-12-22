@@ -1,68 +1,82 @@
 package com.testing.final_mobile.ui.adapter;
 
-import android.content.Context;
-import android.content.Intent;
 import android.view.LayoutInflater;
-import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
+
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.DiffUtil;
+import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.bumptech.glide.Glide;
 import com.testing.final_mobile.R;
-import com.example.final_mobile.data.model.Conversation;
-import com.testing.final_mobile.ui.activity.ChatActivity;
-import java.util.ArrayList;
-import java.util.List;
+import com.testing.final_mobile.data.model.Conversation;
+import com.testing.final_mobile.databinding.ItemConversationBinding;
+import com.testing.final_mobile.utils.TimestampConverter;
 
-public class ConversationAdapter extends RecyclerView.Adapter<ConversationAdapter.ViewHolder> {
+public class ConversationAdapter extends ListAdapter<Conversation, ConversationAdapter.ConversationViewHolder> {
 
-    private Context context;
-    private List<Conversation> list;
-
-    public ConversationAdapter(Context context) {
-        this.context = context;
-        this.list = new ArrayList<>();
+    public interface OnConversationClickListener {
+        void onConversationClicked(Conversation conversation);
     }
 
-    public void setList(List<Conversation> list) {
-        this.list = list;
-        notifyDataSetChanged();
+    private final OnConversationClickListener listener;
+
+    public ConversationAdapter(OnConversationClickListener listener) {
+        super(DIFF_CALLBACK);
+        this.listener = listener;
     }
+
+    private static final DiffUtil.ItemCallback<Conversation> DIFF_CALLBACK = new DiffUtil.ItemCallback<Conversation>() {
+        @Override
+        public boolean areItemsTheSame(@NonNull Conversation oldItem, @NonNull Conversation newItem) {
+            return oldItem.getConversationId().equals(newItem.getConversationId());
+        }
+
+        @Override
+        public boolean areContentsTheSame(@NonNull Conversation oldItem, @NonNull Conversation newItem) {
+            return oldItem.getLastMessage().equals(newItem.getLastMessage()) &&
+                   oldItem.getLastMessageTimestamp().equals(newItem.getLastMessageTimestamp());
+        }
+    };
 
     @NonNull
     @Override
-    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_conversation, parent, false);
-        return new ViewHolder(view);
+    public ConversationViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+        ItemConversationBinding binding = ItemConversationBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false);
+        return new ConversationViewHolder(binding, listener);
     }
 
     @Override
-    public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        Conversation conversation = list.get(position);
-
-        // Ideally, you fetch the other user's name here based on participantIds
-        holder.tvName.setText("User (ID: " + conversation.getConversationId().substring(0,4) + ")");
-        holder.tvLastMsg.setText(conversation.getLastMessage());
-
-        holder.itemView.setOnClickListener(v -> {
-            Intent intent = new Intent(context, ChatActivity.class);
-            intent.putExtra("conversationId", conversation.getConversationId());
-            // intent.putExtra("otherUserName", ...); // Pass name if you have it
-            context.startActivity(intent);
-        });
+    public void onBindViewHolder(@NonNull ConversationViewHolder holder, int position) {
+        holder.bind(getItem(position));
     }
 
-    @Override
-    public int getItemCount() { return list.size(); }
+    static class ConversationViewHolder extends RecyclerView.ViewHolder {
+        private final ItemConversationBinding binding;
+        private final OnConversationClickListener listener;
 
-    public static class ViewHolder extends RecyclerView.ViewHolder {
-        TextView tvName, tvLastMsg, tvTime;
+        public ConversationViewHolder(ItemConversationBinding binding, OnConversationClickListener listener) {
+            super(binding.getRoot());
+            this.binding = binding;
+            this.listener = listener;
+        }
 
-        public ViewHolder(@NonNull View itemView) {
-            super(itemView);
-            tvName = itemView.findViewById(R.id.tv_conversation_name);
-            tvLastMsg = itemView.findViewById(R.id.tv_conversation_last_msg);
-            tvTime = itemView.findViewById(R.id.tv_conversation_time);
+        public void bind(Conversation conversation) {
+            binding.tvUserName.setText(conversation.getOtherUserName());
+            binding.tvLastMessage.setText(conversation.getLastMessage());
+
+            if (conversation.getLastMessageTimestamp() != null) {
+                binding.tvTimestamp.setText(TimestampConverter.getTimeAgo(conversation.getLastMessageTimestamp()));
+            }
+
+            Glide.with(itemView.getContext())
+                    .load(conversation.getOtherUserAvatar())
+                    .placeholder(R.drawable.placeholder_avatar)
+                    .circleCrop()
+                    .into(binding.ivUserAvatar);
+
+            itemView.setOnClickListener(v -> listener.onConversationClicked(conversation));
         }
     }
 }

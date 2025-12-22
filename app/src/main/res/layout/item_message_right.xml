@@ -2,18 +2,17 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="8dp"
-    android:gravity="end"
-    android:orientation="horizontal">
+    android:orientation="vertical"
+    android:padding="4dp"
+    android:gravity="end">
 
     <TextView
-        android:id="@+id/tvMessage"
+        android:id="@+id/tv_message_body"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_button_primary"
-        android:maxWidth="260dp"
+        android:background="@drawable/bg_message_right"
         android:padding="12dp"
-        android:text="Hi! How are you?"
-        android:textColor="@color/white"
-        android:textSize="16sp" />
+        android:textColor="@android:color/white"
+        android:text="This is a message from the current user." />
+
 </LinearLayout>

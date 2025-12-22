@@ -1,68 +1,98 @@
-package com.example.final_mobile.data.repository;
+package com.testing.final_mobile.data.repository;
 
-import androidx.lifecycle.MutableLiveData;
-import com.example.final_mobile.data.model.Conversation;
-import com.example.final_mobile.data.model.Message;
+import android.app.Application;
+
+import androidx.lifecycle.LiveData;
+
 import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.DocumentChange;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.ListenerRegistration;
+import com.testing.final_mobile.data.local.AppDatabase;
+import com.testing.final_mobile.data.local.ChatMessageDao;
+import com.testing.final_mobile.data.local.ConversationDao;
+import com.testing.final_mobile.data.model.ChatMessage;
+import com.testing.final_mobile.data.model.Conversation;
+import com.testing.final_mobile.data.remote.ChatRemoteDataSource;
+import com.testing.final_mobile.data.remote.core.FirestoreService;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class ChatRepository {
 
-    private final FirebaseFirestore db = FirebaseFirestore.getInstance();
-    private final String currentUserId = FirebaseAuth.getInstance().getCurrentUser().getUid();
+    private final ChatMessageDao chatMessageDao;
+    private final ConversationDao conversationDao;
+    private final ChatRemoteDataSource remoteDataSource;
 
-    // Listen for changes in the list of conversations
-    public void getConversations(MutableLiveData<List<Conversation>> liveData) {
-        db.collection("conversations")
-                .whereArrayContains("participantIds", currentUserId)
-                .orderBy("lastMessageTimestamp", Query.Direction.DESCENDING)
-                .addSnapshotListener((value, error) -> {
-                    if (error != null || value == null) return;
+    private ListenerRegistration messageListenerRegistration;
+    private ListenerRegistration conversationListenerRegistration;
 
-                    List<Conversation> list = new ArrayList<>();
-                    for (var doc : value.getDocuments()) {
-                        Conversation conv = doc.toObject(Conversation.class);
-                        if (conv != null) {
-                            conv.setConversationId(doc.getId());
-                            list.add(conv);
-                        }
-                    }
-                    liveData.postValue(list);
-                });
+    public interface OnMessageSentListener {
+        void onMessageSent();
+        void onError(Exception e);
     }
 
-    // Listen for real-time messages in a specific chat
-    public void getMessages(String conversationId, MutableLiveData<List<Message>> liveData) {
-        db.collection("conversations").document(conversationId)
-                .collection("messages")
-                .orderBy("timestamp", Query.Direction.ASCENDING)
-                .addSnapshotListener((value, error) -> {
-                    if (error != null || value == null) return;
-
-                    List<Message> list = new ArrayList<>();
-                    for (var doc : value.getDocuments()) {
-                        list.add(doc.toObject(Message.class));
-                    }
-                    liveData.postValue(list);
-                });
+    public ChatRepository(Application application) {
+        AppDatabase database = AppDatabase.getDatabase(application);
+        this.chatMessageDao = database.chatMessageDao();
+        this.conversationDao = database.conversationDao();
+        this.remoteDataSource = new ChatRemoteDataSource(new FirestoreService());
     }
 
-    // Send a message
-    public void sendMessage(String conversationId, Message message) {
-        db.collection("conversations").document(conversationId)
-                .collection("messages")
-                .add(message);
+    public void sendMessage(ChatMessage message, OnMessageSentListener listener) {
+        remoteDataSource.sendMessage(message, new ChatRemoteDataSource.OnMessageSentListener() {
+            @Override
+            public void onMessageSent() {
+                // The realtime listener will handle caching the new message.
+                listener.onMessageSent();
+            }
 
-        // Update the outer conversation details
-        db.collection("conversations").document(conversationId)
-                .update(
-                        "lastMessage", message.getMessage(),
-                        "lastMessageTimestamp", message.getTimestamp()
-                );
+            @Override
+            public void onError(Exception e) {
+                listener.onError(e);
+            }
+        });
+    }
+
+    public LiveData<List<ChatMessage>> getMessagesForConversation(String conversationId) {
+        stopListeningForMessages();
+        messageListenerRegistration = remoteDataSource.listenForNewMessages(conversationId, new ChatRemoteDataSource.OnNewMessagesListener() {
+            @Override
+            public void onNewMessages(List<ChatMessage> newMessages) {
+                AppDatabase.databaseWriteExecutor.execute(() -> chatMessageDao.insertAll(newMessages));
+            }
+
+            @Override
+            public void onError(Exception e) { /* Handle error */ }
+        });
+        return chatMessageDao.getMessagesForConversation(conversationId);
+    }
+
+    public LiveData<List<Conversation>> getConversations() {
+        String currentUserId = FirebaseAuth.getInstance().getUid();
+        if (currentUserId == null) return conversationDao.getAllConversations(); // Return empty/cached if not logged in
+
+        stopListeningForConversations();
+        conversationListenerRegistration = remoteDataSource.listenForConversations(currentUserId, new ChatRemoteDataSource.OnConversationsListener() {
+            @Override
+            public void onConversationsUpdated(List<Conversation> conversations) {
+                AppDatabase.databaseWriteExecutor.execute(() -> conversationDao.insertAll(conversations));
+            }
+
+            @Override
+            public void onError(Exception e) { /* Handle error */ }
+        });
+
+        return conversationDao.getAllConversations();
+    }
+
+    public void stopListeningForMessages() {
+        if (messageListenerRegistration != null) {
+            messageListenerRegistration.remove();
+        }
+    }
+
+    public void stopListeningForConversations() {
+        if (conversationListenerRegistration != null) {
+            conversationListenerRegistration.remove();
+        }
     }
 }
