@@ -5,10 +5,13 @@ import androidx.room.Entity;
 import androidx.room.PrimaryKey;
 import androidx.room.TypeConverters;
 
+import com.google.firebase.firestore.Exclude;
 import com.google.firebase.firestore.ServerTimestamp;
 import com.testing.final_mobile.data.local.converters.DateConverter;
 
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 @Entity(tableName = "posts")
 @TypeConverters(DateConverter.class)
@@ -27,15 +30,17 @@ public class Post {
     @ServerTimestamp
     private Date timestamp;
 
-    private int likeCount;
-    private int commentCount;
+    private int likeCount = 0;
+    private int commentCount = 0;
 
-    // Empty constructor for Firebase/Room
+    // Map to store user IDs of who liked the post
+    private Map<String, Boolean> likes = new HashMap<>();
+
     public Post() {
         this.postId = ""; // Ensure postId is not null
     }
 
-    // Getters and Setters
+    //<editor-fold desc="Getters and Setters">
     @NonNull
     public String getPostId() {
         return postId;
@@ -108,4 +113,18 @@ public class Post {
     public void setCommentCount(int commentCount) {
         this.commentCount = commentCount;
     }
+
+    public Map<String, Boolean> getLikes() {
+        return likes;
+    }
+
+    public void setLikes(Map<String, Boolean> likes) {
+        this.likes = likes;
+    }
+
+    @Exclude
+    public boolean isLikedBy(String userId) {
+        return likes.containsKey(userId);
+    }
+    //</editor-fold>
 }

@@ -4,9 +4,11 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.firebase.firestore.CollectionReference;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.Transaction;
 
 public class FirestoreService {
 
@@ -26,6 +28,10 @@ public class FirestoreService {
 
     public <T> void addDocument(String collectionPath, T data, OnCompleteListener<DocumentReference> listener) {
         db.collection(collectionPath).add(data).addOnCompleteListener(listener);
+    }
+
+    public <T> void runTransaction(Transaction.Function<T> updateFunction, OnCompleteListener<T> listener) {
+        db.runTransaction(updateFunction).addOnCompleteListener(listener);
     }
 
     // Helper methods to get references if needed

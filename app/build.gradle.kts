@@ -35,7 +35,14 @@ android {
 }
 
 dependencies {
+    // Room components
+    val room_version = "2.6.1"
+    implementation("androidx.room:room-runtime:$room_version")
+    annotationProcessor("androidx.room:room-compiler:$room_version")
+    // Kotlin Extensions and Coroutines support for Room
+    implementation("androidx.room:room-ktx:$room_version")
 
+    // Existing dependencies
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
@@ -45,7 +52,7 @@ dependencies {
     implementation(libs.lifecycle.viewmodel.ktx)
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
-    androidTestImplementation(libs.espresso.core) // THÊM 3 DÒNG NÀY VÀO:
+    androidTestImplementation(libs.espresso.core)
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")

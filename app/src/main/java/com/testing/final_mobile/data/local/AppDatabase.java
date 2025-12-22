@@ -8,16 +8,19 @@ import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
 import com.testing.final_mobile.data.local.converters.DateConverter;
+import com.testing.final_mobile.data.model.Comment;
 import com.testing.final_mobile.data.model.Post;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-@Database(entities = {Post.class}, version = 1, exportSchema = false)
+// Add Comment.class to the entities array and increment the version number
+@Database(entities = {Post.class, Comment.class}, version = 2, exportSchema = false)
 @TypeConverters({DateConverter.class})
 public abstract class AppDatabase extends RoomDatabase {
 
     public abstract PostDao postDao();
+    public abstract CommentDao commentDao(); // Add the new DAO abstract method
 
     private static volatile AppDatabase INSTANCE;
     private static final int NUMBER_OF_THREADS = 4;
@@ -29,6 +32,8 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "app_database")
+                            // Add a migration strategy for version changes
+                            .fallbackToDestructiveMigration()
                             .build();
                 }
             }

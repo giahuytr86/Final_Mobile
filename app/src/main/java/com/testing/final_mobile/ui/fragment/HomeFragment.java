@@ -21,7 +21,8 @@ import com.testing.final_mobile.ui.activity.CreatePostActivity;
 import com.testing.final_mobile.ui.adapter.PostAdapter;
 import com.testing.final_mobile.ui.viewmodel.HomeViewModel;
 
-public class HomeFragment extends Fragment {
+// Implement the listener interface
+public class HomeFragment extends Fragment implements PostAdapter.OnPostInteractionListener {
 
     private FragmentHomeBinding binding;
     private HomeViewModel homeViewModel;
@@ -31,7 +32,6 @@ public class HomeFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        // 1. Inflate the layout with ViewBinding
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
@@ -42,11 +42,10 @@ public class HomeFragment extends Fragment {
 
         mAuth = FirebaseAuth.getInstance();
 
-        // 2. Initialize ViewModel and Adapter
+        // Pass 'this' as the listener
+        postAdapter = new PostAdapter(this);
         homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
-        postAdapter = new PostAdapter();
 
-        // 3. Setup RecyclerView
         binding.rvFeed.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.rvFeed.setAdapter(postAdapter);
 
@@ -56,7 +55,6 @@ public class HomeFragment extends Fragment {
     }
 
     private void setupClickListeners() {
-        // 5. Navigate to CreatePostActivity
         binding.layoutCreatePost.setOnClickListener(v -> {
             Intent intent = new Intent(getActivity(), CreatePostActivity.class);
             startActivity(intent);
@@ -64,14 +62,12 @@ public class HomeFragment extends Fragment {
     }
 
     private void observeViewModel() {
-        // 4. Observe posts LiveData
-        homeViewModel.posts.observe(getViewLifecycleOwner(), posts -> {
-            if (posts != null && !posts.isEmpty()) {
+        homeViewModel.getAllPosts().observe(getViewLifecycleOwner(), posts -> {
+            if (posts != null) {
                 postAdapter.submitList(posts);
             }
         });
 
-        // Observe for errors
         homeViewModel.error.observe(getViewLifecycleOwner(), error -> {
             if (error != null && !error.isEmpty()) {
                 Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
@@ -80,7 +76,6 @@ public class HomeFragment extends Fragment {
     }
 
     private void updateUserAvatar() {
-        // 6. Update current user's avatar
         FirebaseUser currentUser = mAuth.getCurrentUser();
         if (currentUser != null && currentUser.getPhotoUrl() != null) {
             Glide.with(this)
@@ -89,10 +84,18 @@ public class HomeFragment extends Fragment {
         }
     }
 
+    /**
+     * This method is called from the PostAdapter when the like button is clicked.
+     * @param postId The ID of the post that was liked.
+     */
+    @Override
+    public void onLikeClicked(String postId) {
+        homeViewModel.toggleLike(postId);
+    }
+
     @Override
     public void onDestroyView() {
         super.onDestroyView();
-        // Release the binding to avoid memory leaks
         binding = null;
     }
 }

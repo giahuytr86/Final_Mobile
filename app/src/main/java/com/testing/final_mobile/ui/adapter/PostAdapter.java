@@ -1,27 +1,36 @@
 package com.testing.final_mobile.ui.adapter;
 
 import android.content.Intent;
+import android.graphics.Color;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ImageView;
-import android.widget.TextView;
-
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.ListAdapter;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.google.firebase.auth.FirebaseAuth;
 import com.testing.final_mobile.R;
 import com.testing.final_mobile.data.model.Post;
+import com.testing.final_mobile.databinding.ItemPostBinding;
 import com.testing.final_mobile.ui.activity.PostDetailActivity;
 import com.testing.final_mobile.utils.TimestampConverter;
 
 public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
 
-    public PostAdapter() {
+    public interface OnPostInteractionListener {
+        void onLikeClicked(String postId);
+        // Other interactions like onCommentClicked, onShareClicked can be added here
+    }
+
+    private final OnPostInteractionListener listener;
+
+    public PostAdapter(OnPostInteractionListener listener) {
         super(DIFF_CALLBACK);
+        this.listener = listener;
     }
 
     private static final DiffUtil.ItemCallback<Post> DIFF_CALLBACK = new DiffUtil.ItemCallback<Post>() {
@@ -34,15 +43,16 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
         public boolean areContentsTheSame(@NonNull Post oldItem, @NonNull Post newItem) {
             return oldItem.getContent().equals(newItem.getContent()) &&
                    oldItem.getLikeCount() == newItem.getLikeCount() &&
-                   oldItem.getCommentCount() == newItem.getCommentCount();
+                   oldItem.getCommentCount() == newItem.getCommentCount() &&
+                   oldItem.getLikes().equals(newItem.getLikes());
         }
     };
 
     @NonNull
     @Override
     public PostViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_post, parent, false);
-        return new PostViewHolder(view);
+        ItemPostBinding binding = ItemPostBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false);
+        return new PostViewHolder(binding, listener);
     }
 
     @Override
@@ -51,48 +61,53 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
         holder.bind(post);
     }
 
-    class PostViewHolder extends RecyclerView.ViewHolder {
-        private final ImageView ivUserAvatar, ivPostImage, btnShare;
-        private final TextView tvUserName, tvPostDate, tvPostContent, tvLikeCount, tvCommentCount;
+    static class PostViewHolder extends RecyclerView.ViewHolder {
+        private final ItemPostBinding binding;
+        private final OnPostInteractionListener listener;
 
-        public PostViewHolder(@NonNull View itemView) {
-            super(itemView);
-            ivUserAvatar = itemView.findViewById(R.id.ivUserAvatar);
-            ivPostImage = itemView.findViewById(R.id.ivPostImage);
-            tvUserName = itemView.findViewById(R.id.tvUserName);
-            tvPostDate = itemView.findViewById(R.id.tvPostDate);
-            tvPostContent = itemView.findViewById(R.id.tvPostContent);
-            tvLikeCount = itemView.findViewById(R.id.tvLikeCount);
-            tvCommentCount = itemView.findViewById(R.id.tvCommentCount);
-            btnShare = itemView.findViewById(R.id.btnShare);
+        public PostViewHolder(ItemPostBinding binding, OnPostInteractionListener listener) {
+            super(binding.getRoot());
+            this.binding = binding;
+            this.listener = listener;
         }
 
         public void bind(Post post) {
-            tvUserName.setText(post.getUserName());
-            tvPostContent.setText(post.getContent());
-            tvLikeCount.setText(String.valueOf(post.getLikeCount()));
-            tvCommentCount.setText(String.valueOf(post.getCommentCount()));
-            
+            binding.tvUserName.setText(post.getUserName());
+            binding.tvPostContent.setText(post.getContent());
+            binding.tvLikeCount.setText(String.valueOf(post.getLikeCount()));
+            binding.tvCommentCount.setText(String.valueOf(post.getCommentCount()));
+
             if (post.getTimestamp() != null) {
-                tvPostDate.setText(TimestampConverter.getTimeAgo(post.getTimestamp()));
+                binding.tvPostDate.setText(TimestampConverter.getTimeAgo(post.getTimestamp()));
             }
 
             Glide.with(itemView.getContext())
                     .load(post.getUserAvatarUrl())
                     .placeholder(R.drawable.placeholder_avatar)
                     .circleCrop()
-                    .into(ivUserAvatar);
+                    .into(binding.ivUserAvatar);
 
             if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
-                ivPostImage.setVisibility(View.VISIBLE);
-                Glide.with(itemView.getContext())
-                        .load(post.getImageUrl())
-                        .into(ivPostImage);
+                binding.ivPostImage.setVisibility(View.VISIBLE);
+                Glide.with(itemView.getContext()).load(post.getImageUrl()).into(binding.ivPostImage);
             } else {
-                ivPostImage.setVisibility(View.GONE);
+                binding.ivPostImage.setVisibility(View.GONE);
             }
 
-            btnShare.setOnClickListener(v -> {
+            // Update Like button UI
+            String currentUserId = FirebaseAuth.getInstance().getUid();
+            if (currentUserId != null && post.isLikedBy(currentUserId)) {
+                binding.ivLikeIcon.setImageResource(R.drawable.ic_heart_filled); // Filled heart icon
+                binding.ivLikeIcon.setColorFilter(ContextCompat.getColor(itemView.getContext(), R.color.red));
+            } else {
+                binding.ivLikeIcon.setImageResource(R.drawable.ic_heart_outline); // Outline heart icon
+                binding.ivLikeIcon.setColorFilter(ContextCompat.getColor(itemView.getContext(), R.color.text_gray));
+            }
+
+            // --- Setup Click Listeners ---
+            binding.btnLike.setOnClickListener(v -> listener.onLikeClicked(post.getPostId()));
+
+            binding.btnShare.setOnClickListener(v -> {
                 Intent shareIntent = new Intent(Intent.ACTION_SEND);
                 shareIntent.setType("text/plain");
                 shareIntent.putExtra(Intent.EXTRA_TEXT, post.getContent());
