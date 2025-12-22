@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -58,6 +59,14 @@ dependencies {
     implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
-    implementation("com.google.firebase:firebase-messaging") // Added for notifications
+    implementation("com.google.firebase:firebase-messaging")
+    implementation("com.google.firebase:firebase-storage")
+
+    // Image Loading
+    implementation("com.github.bumptech.glide:glide:4.12.0")
+    annotationProcessor("com.github.bumptech.glide:compiler:4.12.0")
+
+    // JSON Parsing
+    implementation("com.google.code.gson:gson:2.9.0") // Corrected syntax for Kotlin DSL
 
 }

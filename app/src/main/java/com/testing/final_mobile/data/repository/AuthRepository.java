@@ -1,7 +1,5 @@
 package com.testing.final_mobile.data.repository;
 
-import android.util.Log;
-
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -23,16 +21,15 @@ public class AuthRepository {
         this.firestore = FirebaseFirestore.getInstance();
     }
 
-    public void registerUser(String email, String password, String fullName, AuthCallback callback) {
+    public void registerUser(String email, String password, String username, AuthCallback callback) {
         firebaseAuth.createUserWithEmailAndPassword(email, password)
                 .addOnCompleteListener(task -> {
                     if (task.isSuccessful()) {
                         FirebaseUser firebaseUser = firebaseAuth.getCurrentUser();
                         if (firebaseUser != null) {
-                            // Create a new user object
-                            User newUser = new User(firebaseUser.getUid(), fullName, email, "");
+                            // Corrected to use username
+                            User newUser = new User(firebaseUser.getUid(), username, email, "");
 
-                            // Save user to Firestore
                             firestore.collection("users").document(firebaseUser.getUid())
                                     .set(newUser)
                                     .addOnCompleteListener(userTask -> {

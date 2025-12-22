@@ -8,10 +8,10 @@ import androidx.fragment.app.FragmentTransaction;
 
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 import com.testing.final_mobile.R;
-import com.testing.final_mobile.ui.fragment.ConversationFragment;
 import com.testing.final_mobile.ui.fragment.HomeFragment;
-import com.testing.final_mobile.ui.fragment.ProfileFragment; // Assuming you have this
+import com.testing.final_mobile.ui.fragment.ProfileFragment;
 import com.testing.final_mobile.ui.fragment.SearchFragment;
+import com.testing.final_mobile.ui.fragment.ConversationFragment; // Placeholder for messages/activity
 
 public class MainActivity extends AppCompatActivity {
 
@@ -23,29 +23,36 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
-        bottomNavigationView.setOnItemSelectedListener(item -> {
+
+        // Set the listener for bottom navigation
+        bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
             Fragment selectedFragment = null;
             int itemId = item.getItemId();
 
-            if (itemId == R.id.nav_home) {
+            if (itemId == R.id.navigation_home) {
                 selectedFragment = new HomeFragment();
-            } else if (itemId == R.id.nav_search) {
+            } else if (itemId == R.id.navigation_search) {
                 selectedFragment = new SearchFragment();
-            } else if (itemId == R.id.nav_messages) {
+            } else if (itemId == R.id.navigation_add_post) {
+                // TODO: Handle post creation, maybe start an activity
+                return false; // Don't select the item
+            } else if (itemId == R.id.navigation_notifications) {
+                // Placeholder - you can create a NotificationsFragment
                 selectedFragment = new ConversationFragment();
-            } else if (itemId == R.id.nav_profile) {
-                selectedFragment = new ProfileFragment(); // Assuming you have a ProfileFragment
+            } else if (itemId == R.id.navigation_profile) {
+                selectedFragment = new ProfileFragment();
             }
 
             if (selectedFragment != null) {
                 loadFragment(selectedFragment);
+                return true;
             }
-            return true;
+            return false;
         });
 
         // Load the default fragment
         if (savedInstanceState == null) {
-            bottomNavigationView.setSelectedItemId(R.id.nav_home);
+            bottomNavigationView.setSelectedItemId(R.id.navigation_home);
         }
     }
 

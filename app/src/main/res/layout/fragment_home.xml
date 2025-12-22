@@ -32,7 +32,7 @@
             android:layout_width="28dp"
             android:layout_height="28dp"
             android:src="@drawable/ic_message_circle"
-            app:tint="@color/black" />
+            app:tint="@color/colorPrimary" />
     </LinearLayout>
 
     <!-- Create Post Shortcut -->
@@ -61,16 +61,12 @@
             android:background="@drawable/bg_input_rounded"
             android:gravity="center_vertical"
             android:paddingStart="16dp"
-            android:text="What's on your mind?"
+            android:text="What\'s on your mind?"
             android:textColor="@color/text_gray"
             android:textSize="14sp" />
 
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:layout_marginStart="12dp"
-            android:src="@drawable/ic_image"
-            app:tint="#10B981" /> <!-- Green 500 -->
+        <!-- Image icon removed as it is no longer supported -->
+
     </LinearLayout>
 
     <!-- Feed List -->

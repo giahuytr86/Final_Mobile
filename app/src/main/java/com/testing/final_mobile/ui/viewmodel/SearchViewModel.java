@@ -36,19 +36,20 @@ public class SearchViewModel extends AndroidViewModel {
 
     public SearchViewModel(@NonNull Application application) {
         super(application);
-        this.userRepository = new UserRepository(application);
+        // Correctly instantiate repositories
+        this.userRepository = new UserRepository();
         this.postRepository = new PostRepository(application);
     }
 
     public void searchUsers(String searchTerm) {
         _isLoading.setValue(true);
         userRepository.searchUsers(searchTerm, _userSearchResults, _error);
-        _isLoading.postValue(false); // Use postValue for thread safety
+        // Loading state will be handled by observing the results/errors
     }
 
     public void searchPosts(String searchTerm) {
         _isLoading.setValue(true);
         postRepository.searchPosts(searchTerm, _postSearchResults, _error);
-        _isLoading.postValue(false);
+        // Loading state will be handled by observing the results/errors
     }
 }

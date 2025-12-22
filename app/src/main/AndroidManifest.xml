@@ -2,9 +2,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Add required permissions for internet and network state access -->
+    <!-- Required Permissions -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
 
     <application
         android:name=".MyApplication"
@@ -17,7 +18,20 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.Final_Mobile">
 
-        <!-- Activities -->
+        <!-- Launcher Activity -->
+        <activity
+            android:name=".ui.activity.LoginActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Other Activities -->
+        <activity
+            android:name=".ui.activity.MainActivity"
+            android:exported="false" />
         <activity
             android:name=".ui.activity.PostDetailActivity"
             android:exported="false" />
@@ -25,7 +39,7 @@
             android:name=".ui.activity.CommentsActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.activity.LoginActivity"
+            android:name=".ui.activity.CreatePostActivity"
             android:exported="false" />
         <activity
             android:name=".ui.activity.RegisterActivity"
@@ -34,13 +48,8 @@
             android:name=".ui.activity.ChatActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.MainActivity"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.LAUNCHER" />
-            </intent-filter>
-        </activity>
+            android:name=".ui.activity.SettingsActivity"
+            android:exported="false" />
 
         <!-- Firebase Messaging Service -->
         <service
@@ -50,14 +59,6 @@
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />
             </intent-filter>
         </service>
-
-        <!-- Firebase Messaging Meta-data -->
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_notification" />
-        <meta-data
-            android:name="com.google.firebase.messaging.default_notification_color"
-            android:resource="@color/colorPrimary" />
 
     </application>
 

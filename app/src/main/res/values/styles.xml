@@ -3,15 +3,13 @@
     <!-- Base application theme -->
     <style name="Theme.ItSocial" parent="Theme.MaterialComponents.Light.NoActionBar">
         <item name="colorPrimary">@color/colorPrimary</item>
-        <item name="colorPrimaryVariant">@color/colorPrimaryDark</item>
+        <!-- The 'colorPrimaryVariant' attribute is from Material 2 and can cause 'Duplicate resources' 
+             errors when used with modern Material 3 dependencies. It has been removed. -->
         <item name="colorOnPrimary">@color/white</item>
         <item name="android:statusBarColor">@color/white</item>
         <item name="android:windowLightStatusBar">true</item>
     </style>
 
-    <!-- Style for Circular Avatars -->
-    <style name="CircleImage" parent="">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">50%</item>
-    </style>
+    <!-- The CircleImage style was moved to themes.xml to resolve a duplicate resource error. -->
+
 </resources>

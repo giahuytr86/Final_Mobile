@@ -1,7 +1,6 @@
 package com.testing.final_mobile.ui.viewmodel;
 
 import android.app.Application;
-import android.util.Log;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
@@ -15,13 +14,11 @@ import java.util.List;
 
 public class HomeViewModel extends AndroidViewModel {
 
-    private static final String TAG = "HomeViewModel";
-
     private final PostRepository postRepository;
     private final LiveData<List<Post>> allPosts;
 
     private final MutableLiveData<String> _error = new MutableLiveData<>();
-    public LiveData<String> error = _error;
+    public final LiveData<String> error = _error;
 
     public HomeViewModel(@NonNull Application application) {
         super(application);
@@ -33,18 +30,16 @@ public class HomeViewModel extends AndroidViewModel {
         return allPosts;
     }
 
-    public void toggleLike(String postId) {
+    public void toggleLikeStatus(String postId) {
         postRepository.toggleLikeStatus(postId, new PostRepository.OnPostLikedListener() {
             @Override
             public void onPostLiked() {
-                // The UI will be updated automatically by the LiveData from Room.
-                // We can log this for debugging.
-                Log.d(TAG, "Like status toggled for post: " + postId);
+                // LiveData will update automatically, no action needed here.
             }
 
             @Override
             public void onError(Exception e) {
-                _error.setValue(e.getMessage());
+                _error.postValue(e.getMessage());
             }
         });
     }

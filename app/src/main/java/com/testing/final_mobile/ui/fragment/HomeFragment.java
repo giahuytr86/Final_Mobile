@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -16,22 +15,21 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.bumptech.glide.Glide;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.testing.final_mobile.R;
+import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.databinding.FragmentHomeBinding;
 import com.testing.final_mobile.ui.activity.CreatePostActivity;
 import com.testing.final_mobile.ui.adapter.PostAdapter;
 import com.testing.final_mobile.ui.viewmodel.HomeViewModel;
 
-// Implement the listener interface
 public class HomeFragment extends Fragment implements PostAdapter.OnPostInteractionListener {
 
     private FragmentHomeBinding binding;
-    private HomeViewModel homeViewModel;
+    private HomeViewModel viewModel;
     private PostAdapter postAdapter;
-    private FirebaseAuth mAuth;
 
-    @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
         binding = FragmentHomeBinding.inflate(inflater, container, false);
         return binding.getRoot();
     }
@@ -40,18 +38,19 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        mAuth = FirebaseAuth.getInstance();
+        viewModel = new ViewModelProvider(this).get(HomeViewModel.class);
 
-        // Pass 'this' as the listener
-        postAdapter = new PostAdapter(this);
-        homeViewModel = new ViewModelProvider(this).get(HomeViewModel.class);
-
-        binding.rvFeed.setLayoutManager(new LinearLayoutManager(getContext()));
-        binding.rvFeed.setAdapter(postAdapter);
-
+        setupRecyclerView();
         setupClickListeners();
         observeViewModel();
-        updateUserAvatar();
+
+        loadUserAvatar();
+    }
+
+    private void setupRecyclerView() {
+        postAdapter = new PostAdapter(this);
+        binding.rvFeed.setLayoutManager(new LinearLayoutManager(getContext()));
+        binding.rvFeed.setAdapter(postAdapter);
     }
 
     private void setupClickListeners() {
@@ -59,43 +58,35 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
             Intent intent = new Intent(getActivity(), CreatePostActivity.class);
             startActivity(intent);
         });
+
+        // TODO: Add listener for messages button
     }
 
     private void observeViewModel() {
-        homeViewModel.getAllPosts().observe(getViewLifecycleOwner(), posts -> {
+        viewModel.getAllPosts().observe(getViewLifecycleOwner(), posts -> {
             if (posts != null) {
                 postAdapter.submitList(posts);
             }
         });
 
-        homeViewModel.error.observe(getViewLifecycleOwner(), error -> {
-            if (error != null && !error.isEmpty()) {
-                Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
-            }
+        viewModel.error.observe(getViewLifecycleOwner(), error -> {
+            // Handle error display
         });
     }
 
-    private void updateUserAvatar() {
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        if (currentUser != null && currentUser.getPhotoUrl() != null) {
-            Glide.with(this)
+    private void loadUserAvatar() {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null && getContext() != null) {
+            Glide.with(getContext())
                     .load(currentUser.getPhotoUrl())
+                    .placeholder(R.drawable.placeholder_avatar)
+                    .circleCrop()
                     .into(binding.ivMyAvatar);
         }
     }
 
-    /**
-     * This method is called from the PostAdapter when the like button is clicked.
-     * @param postId The ID of the post that was liked.
-     */
     @Override
     public void onLikeClicked(String postId) {
-        homeViewModel.toggleLike(postId);
-    }
-
-    @Override
-    public void onDestroyView() {
-        super.onDestroyView();
-        binding = null;
+        viewModel.toggleLikeStatus(postId);
     }
 }

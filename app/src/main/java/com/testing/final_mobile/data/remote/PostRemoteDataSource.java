@@ -14,7 +14,6 @@ import com.testing.final_mobile.data.remote.core.FirestoreService;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class PostRemoteDataSource {
 
@@ -54,6 +53,10 @@ public class PostRemoteDataSource {
         this.firestoreService = firestoreService;
     }
 
+    public DocumentReference getNewPostReference() {
+        return firestoreService.getCollection(POST_COLLECTION).document();
+    }
+
     public void searchPosts(String searchTerm, OnPostsSearchedListener listener) {
         if (searchTerm == null || searchTerm.trim().isEmpty()) {
             listener.onPostsSearched(new ArrayList<>());
@@ -73,7 +76,7 @@ public class PostRemoteDataSource {
                 List<Post> posts = new ArrayList<>();
                 for (QueryDocumentSnapshot doc : task.getResult()) {
                     Post post = doc.toObject(Post.class);
-                    post.setPostId(doc.getId());
+                    post.setId(doc.getId()); // Corrected method name
                     posts.add(post);
                 }
                 listener.onPostsSearched(posts);
@@ -95,15 +98,14 @@ public class PostRemoteDataSource {
                 throw new FirebaseFirestoreException("Post not found", FirebaseFirestoreException.Code.NOT_FOUND);
             }
 
-            Map<String, Boolean> likes = post.getLikes();
-            if (likes.containsKey(userId)) {
+            List<String> likes = post.getLikes(); // Correct type
+            if (likes.contains(userId)) {
                 likes.remove(userId);
-                post.setLikeCount(post.getLikeCount() - 1);
             } else {
-                likes.put(userId, true);
-                post.setLikeCount(post.getLikeCount() + 1);
+                likes.add(userId);
             }
-            transaction.set(postRef, post);
+            // The like count is now derived, so we only update the list.
+            transaction.update(postRef, "likes", likes);
             return null;
         };
 
@@ -120,9 +122,11 @@ public class PostRemoteDataSource {
     }
 
     public void createPost(Post newPost, OnPostCreatedListener listener) {
-        firestoreService.addDocument(POST_COLLECTION, newPost, task -> {
+        // Use the specific document reference to ensure the ID is what we set in the repository
+        firestoreService.getDocument(POST_COLLECTION, newPost.getId()).set(newPost).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                listener.onPostCreated(task.getResult());
+                // The result of a set operation is void, so we pass the reference we already have.
+                listener.onPostCreated(firestoreService.getDocument(POST_COLLECTION, newPost.getId()));
             } else {
                 Log.e(TAG, "Error creating post", task.getException());
                 if (task.getException() != null) {
@@ -143,7 +147,7 @@ public class PostRemoteDataSource {
                 if (snapshots != null) {
                     for (QueryDocumentSnapshot doc : snapshots) {
                         Post post = doc.toObject(Post.class);
-                        post.setPostId(doc.getId());
+                        post.setId(doc.getId()); // Corrected method name
                         postList.add(post);
                     }
                 }
@@ -163,7 +167,7 @@ public class PostRemoteDataSource {
                 if (task.getResult() != null && task.getResult().exists()) {
                     Post post = task.getResult().toObject(Post.class);
                     if (post != null) {
-                        post.setPostId(task.getResult().getId());
+                        post.setId(task.getResult().getId()); // Corrected method name
                         listener.onPostFetched(post);
                     }
                 } else {

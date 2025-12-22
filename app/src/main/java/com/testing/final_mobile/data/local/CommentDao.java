@@ -17,7 +17,7 @@ public interface CommentDao {
      * Gets all comments (and replies) for a specific post, ordered by creation time.
      * The UI will be responsible for nesting replies under their parent comments.
      */
-    @Query("SELECT * FROM comments WHERE postId = :postId ORDER BY createdAt ASC")
+    @Query("SELECT * FROM comments WHERE postId = :postId ORDER BY timestamp ASC") // Corrected column name
     LiveData<List<Comment>> getCommentsForPost(String postId);
 
     /**
