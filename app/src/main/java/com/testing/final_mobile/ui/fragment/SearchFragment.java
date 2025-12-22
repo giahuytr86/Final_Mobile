@@ -6,23 +6,22 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
-import androidx.recyclerview.widget.LinearLayoutManager;
 
+import com.google.android.material.tabs.TabLayout;
+import com.google.android.material.tabs.TabLayoutMediator;
 import com.testing.final_mobile.databinding.FragmentSearchBinding;
-import com.testing.final_mobile.ui.adapter.UserAdapter;
+import com.testing.final_mobile.ui.adapter.SearchViewPagerAdapter;
 import com.testing.final_mobile.ui.viewmodel.SearchViewModel;
 
 public class SearchFragment extends Fragment {
 
     private FragmentSearchBinding binding;
     private SearchViewModel viewModel;
-    private UserAdapter userAdapter;
 
     @Nullable
     @Override
@@ -35,16 +34,25 @@ public class SearchFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        viewModel = new ViewModelProvider(this).get(SearchViewModel.class);
-        setupRecyclerView();
+        // Use requireActivity() to scope the ViewModel to the Activity
+        // This allows child fragments to access the same instance
+        viewModel = new ViewModelProvider(requireActivity()).get(SearchViewModel.class);
+
+        setupViewPagerAndTabs();
         setupSearch();
-        observeViewModel();
     }
 
-    private void setupRecyclerView() {
-        userAdapter = new UserAdapter();
-        binding.rvSearchResults.setLayoutManager(new LinearLayoutManager(getContext()));
-        binding.rvSearchResults.setAdapter(userAdapter);
+    private void setupViewPagerAndTabs() {
+        SearchViewPagerAdapter adapter = new SearchViewPagerAdapter(getChildFragmentManager(), getLifecycle());
+        binding.viewPager.setAdapter(adapter);
+
+        new TabLayoutMediator(binding.tabLayout, binding.viewPager, (tab, position) -> {
+            if (position == 1) {
+                tab.setText("Posts");
+            } else {
+                tab.setText("Users");
+            }
+        }).attach();
     }
 
     private void setupSearch() {
@@ -54,30 +62,14 @@ public class SearchFragment extends Fragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                // Perform search as user types
-                viewModel.searchUsers(s.toString());
+                String searchTerm = s.toString();
+                // Trigger search for both types
+                viewModel.searchUsers(searchTerm);
+                viewModel.searchPosts(searchTerm);
             }
 
             @Override
             public void afterTextChanged(Editable s) { }
-        });
-    }
-
-    private void observeViewModel() {
-        viewModel.searchResults.observe(getViewLifecycleOwner(), users -> {
-            if (users != null) {
-                userAdapter.submitList(users);
-            }
-        });
-
-        viewModel.isLoading.observe(getViewLifecycleOwner(), isLoading -> {
-            // You can show a progress bar here if you want
-        });
-
-        viewModel.error.observe(getViewLifecycleOwner(), error -> {
-            if (error != null && !error.isEmpty()) {
-                Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
-            }
         });
     }
 

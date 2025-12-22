@@ -29,6 +29,11 @@ public class PostRemoteDataSource {
         void onError(Exception e);
     }
 
+    public interface OnPostsSearchedListener {
+        void onPostsSearched(List<Post> posts);
+        void onError(Exception e);
+    }
+
     public interface OnPostFetchedListener {
         void onPostFetched(Post post);
         void onError(Exception e);
@@ -49,6 +54,38 @@ public class PostRemoteDataSource {
         this.firestoreService = firestoreService;
     }
 
+    public void searchPosts(String searchTerm, OnPostsSearchedListener listener) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            listener.onPostsSearched(new ArrayList<>());
+            return;
+        }
+
+        String lowercasedTerm = searchTerm.toLowerCase();
+
+        Query query = firestoreService.getCollection(POST_COLLECTION)
+                .orderBy("searchableContent")
+                .startAt(lowercasedTerm)
+                .endAt(lowercasedTerm + '\uf8ff')
+                .limit(20);
+
+        firestoreService.getCollection(query, task -> {
+            if (task.isSuccessful() && task.getResult() != null) {
+                List<Post> posts = new ArrayList<>();
+                for (QueryDocumentSnapshot doc : task.getResult()) {
+                    Post post = doc.toObject(Post.class);
+                    post.setPostId(doc.getId());
+                    posts.add(post);
+                }
+                listener.onPostsSearched(posts);
+            } else {
+                Log.e(TAG, "Error searching posts", task.getException());
+                if (task.getException() != null) {
+                    listener.onError(task.getException());
+                }
+            }
+        });
+    }
+
     public void toggleLikeStatus(String postId, String userId, OnPostLikeUpdatedListener listener) {
         DocumentReference postRef = firestoreService.getDocument(POST_COLLECTION, postId);
 
@@ -60,11 +97,9 @@ public class PostRemoteDataSource {
 
             Map<String, Boolean> likes = post.getLikes();
             if (likes.containsKey(userId)) {
-                // User has liked the post, so unlike it.
                 likes.remove(userId);
                 post.setLikeCount(post.getLikeCount() - 1);
             } else {
-                // User has not liked the post, so like it.
                 likes.put(userId, true);
                 post.setLikeCount(post.getLikeCount() + 1);
             }

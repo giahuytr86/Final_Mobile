@@ -26,6 +26,7 @@ public class Post {
     private String userAvatarUrl;
     private String content;
     private String imageUrl;
+    private String searchableContent; // For case-insensitive search
 
     @ServerTimestamp
     private Date timestamp;
@@ -33,7 +34,6 @@ public class Post {
     private int likeCount = 0;
     private int commentCount = 0;
 
-    // Map to store user IDs of who liked the post
     private Map<String, Boolean> likes = new HashMap<>();
 
     public Post() {
@@ -80,6 +80,9 @@ public class Post {
 
     public void setContent(String content) {
         this.content = content;
+        if (content != null) {
+            this.searchableContent = content.toLowerCase();
+        }
     }
 
     public String getImageUrl() {
@@ -88,6 +91,14 @@ public class Post {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public String getSearchableContent() {
+        return searchableContent;
+    }
+
+    public void setSearchableContent(String searchableContent) {
+        this.searchableContent = searchableContent;
     }
 
     public Date getTimestamp() {

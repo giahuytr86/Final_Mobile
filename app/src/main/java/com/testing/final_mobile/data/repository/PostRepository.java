@@ -7,6 +7,7 @@ import android.net.NetworkInfo;
 import android.util.Log;
 
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
@@ -46,6 +47,20 @@ public class PostRepository {
         this.application = application;
     }
 
+    public void searchPosts(String searchTerm, MutableLiveData<List<Post>> searchResults, MutableLiveData<String> error) {
+        remoteDataSource.searchPosts(searchTerm, new PostRemoteDataSource.OnPostsSearchedListener() {
+            @Override
+            public void onPostsSearched(List<Post> posts) {
+                searchResults.postValue(posts);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                error.postValue(e.getMessage());
+            }
+        });
+    }
+
     public void toggleLikeStatus(String postId, OnPostLikedListener listener) {
         String currentUserId = FirebaseAuth.getInstance().getUid();
         if (currentUserId == null || !isNetworkAvailable()) {
@@ -56,7 +71,6 @@ public class PostRepository {
         remoteDataSource.toggleLikeStatus(postId, currentUserId, new PostRemoteDataSource.OnPostLikeUpdatedListener() {
             @Override
             public void onPostLikeUpdated() {
-                // After the like is updated on the server, refresh the specific post in our local DB
                 refreshPostFromServer(postId);
                 listener.onPostLiked();
             }
