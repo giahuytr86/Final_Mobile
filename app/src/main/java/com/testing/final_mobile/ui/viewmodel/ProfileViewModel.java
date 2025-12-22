@@ -5,8 +5,10 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.data.repository.PostRepository;
 import com.testing.final_mobile.data.repository.UserRepository;
@@ -16,7 +18,8 @@ public class ProfileViewModel extends AndroidViewModel {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
 
-    public LiveData<User> user;
+    private final MediatorLiveData<User> _user = new MediatorLiveData<>();
+    public LiveData<User> user = _user;
     private final MutableLiveData<Boolean> _isLoading = new MutableLiveData<>(false);
     public final LiveData<Boolean> isLoading = _isLoading;
 
@@ -31,8 +34,12 @@ public class ProfileViewModel extends AndroidViewModel {
 
     public void loadUser(String userId) {
         _isLoading.setValue(true);
-        user = userRepository.getUser(userId);
-        // isLoading will be handled by observing the user LiveData
+        LiveData<User> userSource = userRepository.getUser(userId);
+
+        _user.addSource(userSource, user -> {
+            _user.setValue(user);
+            _isLoading.setValue(false);
+        });
     }
 
     public void followUser(String userId) {
