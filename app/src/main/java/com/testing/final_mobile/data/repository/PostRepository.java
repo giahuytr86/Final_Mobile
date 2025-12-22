@@ -8,6 +8,7 @@ import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentReference;
 import com.testing.final_mobile.data.local.AppDatabase;
 import com.testing.final_mobile.data.local.PostDao;
@@ -26,16 +27,45 @@ public class PostRepository {
     private final PostRemoteDataSource remoteDataSource;
     private final Application application;
 
+    //<editor-fold desc="Interfaces">
     public interface OnPostCreatedListener {
         void onPostCreated();
         void onError(Exception e);
     }
+
+    public interface OnPostLikedListener {
+        void onPostLiked();
+        void onError(Exception e);
+    }
+    //</editor-fold>
 
     public PostRepository(Application application) {
         AppDatabase database = AppDatabase.getDatabase(application);
         this.postDao = database.postDao();
         this.remoteDataSource = new PostRemoteDataSource(new FirestoreService());
         this.application = application;
+    }
+
+    public void toggleLikeStatus(String postId, OnPostLikedListener listener) {
+        String currentUserId = FirebaseAuth.getInstance().getUid();
+        if (currentUserId == null || !isNetworkAvailable()) {
+            listener.onError(new Exception("Not logged in or no network"));
+            return;
+        }
+
+        remoteDataSource.toggleLikeStatus(postId, currentUserId, new PostRemoteDataSource.OnPostLikeUpdatedListener() {
+            @Override
+            public void onPostLikeUpdated() {
+                // After the like is updated on the server, refresh the specific post in our local DB
+                refreshPostFromServer(postId);
+                listener.onPostLiked();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                listener.onError(e);
+            }
+        });
     }
 
     public void createPost(Post newPost, OnPostCreatedListener listener) {
@@ -47,8 +77,6 @@ public class PostRepository {
         remoteDataSource.createPost(newPost, new PostRemoteDataSource.OnPostCreatedListener() {
             @Override
             public void onPostCreated(DocumentReference documentReference) {
-                // After successfully creating the post on Firebase, we can also update our local DB.
-                // We fetch the newly created post to get all server-side generated fields (like timestamp).
                 refreshPostFromServer(documentReference.getId());
                 listener.onPostCreated();
             }
@@ -76,9 +104,7 @@ public class PostRepository {
         remoteDataSource.fetchAllPosts(new PostRemoteDataSource.OnPostsFetchedListener() {
             @Override
             public void onPostsFetched(List<Post> posts) {
-                AppDatabase.databaseWriteExecutor.execute(() -> {
-                    postDao.insertAll(posts);
-                });
+                AppDatabase.databaseWriteExecutor.execute(() -> postDao.insertAll(posts));
             }
 
             @Override
@@ -94,9 +120,7 @@ public class PostRepository {
         remoteDataSource.fetchPostById(postId, new PostRemoteDataSource.OnPostFetchedListener() {
             @Override
             public void onPostFetched(Post post) {
-                AppDatabase.databaseWriteExecutor.execute(() -> {
-                    postDao.insertAll(Collections.singletonList(post));
-                });
+                AppDatabase.databaseWriteExecutor.execute(() -> postDao.insertAll(Collections.singletonList(post)));
             }
 
             @Override

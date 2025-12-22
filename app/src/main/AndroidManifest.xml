@@ -22,12 +22,6 @@
             android:name=".ui.activity.LoginActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.activity.OtpActivity"
-            android:exported="false" />
-<!--        <activity-->
-<!--            android:name=".OTPActivity"-->
-<!--            android:exported="false" />-->
-        <activity
             android:name=".ui.activity.RegisterActivity"
             android:exported="false" />
         <activity

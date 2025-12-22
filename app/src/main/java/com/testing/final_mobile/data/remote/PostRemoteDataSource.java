@@ -2,15 +2,19 @@ package com.testing.final_mobile.data.remote;
 
 import android.util.Log;
 
+import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
+import com.google.firebase.firestore.Transaction;
 import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.data.remote.core.FirestoreService;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class PostRemoteDataSource {
 
@@ -34,10 +38,50 @@ public class PostRemoteDataSource {
         void onPostCreated(DocumentReference documentReference);
         void onError(Exception e);
     }
+
+    public interface OnPostLikeUpdatedListener {
+        void onPostLikeUpdated();
+        void onError(Exception e);
+    }
     //</editor-fold>
 
     public PostRemoteDataSource(FirestoreService firestoreService) {
         this.firestoreService = firestoreService;
+    }
+
+    public void toggleLikeStatus(String postId, String userId, OnPostLikeUpdatedListener listener) {
+        DocumentReference postRef = firestoreService.getDocument(POST_COLLECTION, postId);
+
+        Transaction.Function<Void> updateFunction = transaction -> {
+            Post post = transaction.get(postRef).toObject(Post.class);
+            if (post == null) {
+                throw new FirebaseFirestoreException("Post not found", FirebaseFirestoreException.Code.NOT_FOUND);
+            }
+
+            Map<String, Boolean> likes = post.getLikes();
+            if (likes.containsKey(userId)) {
+                // User has liked the post, so unlike it.
+                likes.remove(userId);
+                post.setLikeCount(post.getLikeCount() - 1);
+            } else {
+                // User has not liked the post, so like it.
+                likes.put(userId, true);
+                post.setLikeCount(post.getLikeCount() + 1);
+            }
+            transaction.set(postRef, post);
+            return null;
+        };
+
+        firestoreService.runTransaction(updateFunction, (OnCompleteListener<Void>) task -> {
+            if (task.isSuccessful()) {
+                listener.onPostLikeUpdated();
+            } else {
+                Log.e(TAG, "Like transaction failed", task.getException());
+                if (task.getException() != null) {
+                    listener.onError(task.getException());
+                }
+            }
+        });
     }
 
     public void createPost(Post newPost, OnPostCreatedListener listener) {

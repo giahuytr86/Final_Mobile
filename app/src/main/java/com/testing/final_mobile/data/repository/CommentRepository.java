@@ -1,115 +1,101 @@
 package com.testing.final_mobile.data.repository;
 
-import com.google.firebase.firestore.CollectionReference;
-import com.google.firebase.firestore.EventListener;
-import com.google.firebase.firestore.FieldValue;
-import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.ListenerRegistration;
-import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QuerySnapshot;
-import com.testing.final_mobile.data.remote.FirebaseManager;
+import android.app.Application;
+import android.util.Log;
+
+import androidx.lifecycle.LiveData;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
+import com.testing.final_mobile.data.local.AppDatabase;
+import com.testing.final_mobile.data.local.CommentDao;
 import com.testing.final_mobile.data.model.Comment;
-import com.testing.final_mobile.data.model.CommentLike;
+import com.testing.final_mobile.data.remote.CommentRemoteDataSource;
+import com.testing.final_mobile.data.remote.core.FirestoreService;
+
+import java.util.List;
 
 public class CommentRepository {
 
-    private final FirebaseFirestore db;
-    private final CollectionReference commentRef;
-    private final CollectionReference commentLikeRef;
+    private static final String TAG = "CommentRepository";
 
-    public CommentRepository() {
-        db = FirebaseManager.getFirestore();
-        commentRef = db.collection("comments");
-        commentLikeRef = db.collection("commentLikes");
+    private final CommentDao commentDao;
+    private final CommentRemoteDataSource remoteDataSource;
+
+    //<editor-fold desc="Interfaces">
+    public interface OnCommentAddedListener {
+        void onCommentAdded();
+        void onError(Exception e);
     }
 
-    /**
-     * Get all comments of a post (including replies if parentId != null)
-     */
-    public ListenerRegistration getCommentsByPost(
-            String postId,
-            EventListener<QuerySnapshot> listener
-    ) {
-        return commentRef
-                .whereEqualTo("postId", postId)
-                .orderBy("createdAt", Query.Direction.ASCENDING)
-                .addSnapshotListener(listener);
+    public interface OnCommentLikedListener {
+        void onCommentLiked();
+        void onError(Exception e);
+    }
+    //</editor-fold>
+
+    public CommentRepository(Application application) {
+        AppDatabase database = AppDatabase.getDatabase(application);
+        this.commentDao = database.commentDao();
+        this.remoteDataSource = new CommentRemoteDataSource(new FirestoreService());
     }
 
-    /**
-     * Add new root comment
-     */
-    public void addComment(String postId, String content) {
-        String userId = FirebaseManager.getCurrentUserId();
-        if (userId == null) return;
+    public void toggleLikeStatus(String postId, String commentId, OnCommentLikedListener listener) {
+        String currentUserId = FirebaseAuth.getInstance().getUid();
+        if (currentUserId == null) {
+            listener.onError(new Exception("User not logged in"));
+            return;
+        }
 
-        String commentId = commentRef.document().getId();
+        remoteDataSource.toggleLikeStatus(postId, commentId, currentUserId, new CommentRemoteDataSource.OnCommentLikeUpdatedListener() {
+            @Override
+            public void onCommentLikeUpdated() {
+                // After updating on the server, refresh the local data
+                refreshCommentsFromServer(postId);
+                listener.onCommentLiked();
+            }
 
-        Comment comment = new Comment(
-                commentId,
-                postId,
-                userId,
-                "Anonymous", // có thể thay bằng displayName sau
-                content,
-                System.currentTimeMillis()
-        );
-
-        commentRef.document(commentId).set(comment);
+            @Override
+            public void onError(Exception e) {
+                listener.onError(e);
+            }
+        });
     }
 
-    /**
-     * Reply to a comment
-     */
-    public void replyComment(String postId, String parentCommentId, String content) {
-        String userId = FirebaseManager.getCurrentUserId();
-        if (userId == null) return;
-
-        String commentId = commentRef.document().getId();
-
-        Comment reply = new Comment(
-                commentId,
-                postId,
-                userId,
-                "Anonymous",
-                content,
-                System.currentTimeMillis()
-        );
-
-        // đánh dấu là reply
-        commentRef.document(commentId).set(reply);
-
-        // tăng replyCount cho comment cha
-        commentRef.document(parentCommentId)
-                .update("replyCount", FieldValue.increment(1));
+    public LiveData<List<Comment>> getCommentsForPost(String postId) {
+        refreshCommentsFromServer(postId);
+        return commentDao.getCommentsForPost(postId);
     }
 
-    /**
-     * Like / Unlike a comment (toggle)
-     */
-    public void toggleLikeComment(String commentId) {
-        String userId = FirebaseManager.getCurrentUserId();
-        if (userId == null) return;
+    public void addComment(Comment newComment, OnCommentAddedListener listener) {
+        remoteDataSource.addComment(newComment, new CommentRemoteDataSource.OnCommentAddedListener() {
+            @Override
+            public void onCommentAdded(DocumentReference documentReference) {
+                refreshCommentsFromServer(newComment.getPostId());
+                listener.onCommentAdded();
+            }
 
-        String likeDocId = commentId + "_" + userId;
+            @Override
+            public void onError(Exception e) {
+                listener.onError(e);
+            }
+        });
+    }
 
-        commentLikeRef.document(likeDocId)
-                .get()
-                .addOnSuccessListener(snapshot -> {
-                    if (snapshot.exists()) {
-                        // UNLIKE
-                        commentLikeRef.document(likeDocId).delete();
-                        updateLikeCount(commentId, -1);
-                    } else {
-                        // LIKE
-                        CommentLike like = new CommentLike(commentId, userId);
-                        commentLikeRef.document(likeDocId).set(like);
-                        updateLikeCount(commentId, +1);
-                    }
+    private void refreshCommentsFromServer(String postId) {
+        remoteDataSource.fetchCommentsForPost(postId, new CommentRemoteDataSource.OnCommentsFetchedListener() {
+            @Override
+            public void onCommentsFetched(List<Comment> comments) {
+                AppDatabase.databaseWriteExecutor.execute(() -> {
+                    commentDao.insertAll(comments);
+                    Log.d(TAG, "Refreshed " + comments.size() + " comments for post " + postId);
                 });
-    }
+            }
 
-    private void updateLikeCount(String commentId, int delta) {
-        commentRef.document(commentId)
-                .update("likeCount", FieldValue.increment(delta));
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Error fetching comments for post " + postId, e);
+            }
+        });
     }
 }
