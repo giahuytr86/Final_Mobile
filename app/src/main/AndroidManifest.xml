@@ -24,19 +24,19 @@
         <activity
             android:name=".ui.activity.OtpActivity"
             android:exported="false" />
-        <activity
-            android:name=".OTPActivity"
-            android:exported="false" />
+<!--        <activity-->
+<!--            android:name=".OTPActivity"-->
+<!--            android:exported="false" />-->
         <activity
             android:name=".ui.activity.RegisterActivity"
             android:exported="false" />
         <activity
             android:name=".ui.activity.ChatActivity"
             android:exported="false" />
-        <activity
-            android:name=".ui.login.LoginActivity"
-            android:exported="false"
-            android:label="@string/title_activity_login" />
+<!--        <activity-->
+<!--            android:name=".ui.login.LoginActivity"-->
+<!--            android:exported="false"-->
+<!--            android:label="@string/title_activity_login" />-->
         <activity
             android:name=".ui.MainActivity"
             android:exported="true">
