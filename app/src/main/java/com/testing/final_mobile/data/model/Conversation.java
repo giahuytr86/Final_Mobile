@@ -1,25 +1,92 @@
-package com.example.final_mobile.data.model;
+package com.testing.final_mobile.data.model;
 
-import com.google.firebase.Timestamp;
-import java.util.List;
+import androidx.annotation.NonNull;
+import androidx.room.Entity;
+import androidx.room.PrimaryKey;
+import androidx.room.TypeConverters;
 
+import com.google.firebase.firestore.ServerTimestamp;
+import com.testing.final_mobile.data.local.converters.DateConverter;
+
+import java.util.Date;
+
+@Entity(tableName = "conversations")
+@TypeConverters(DateConverter.class)
 public class Conversation {
+
+    @PrimaryKey
+    @NonNull
     private String conversationId;
-    private List<String> participantIds; // List of UIDs involved
+
     private String lastMessage;
-    private Timestamp lastMessageTimestamp;
+    @ServerTimestamp
+    private Date lastMessageTimestamp;
 
-    public Conversation() { }
+    private String otherUserId;
+    private String otherUserName;
+    private String otherUserAvatar;
+    private int unreadCount;
 
-    public String getConversationId() { return conversationId; }
-    public void setConversationId(String conversationId) { this.conversationId = conversationId; }
+    public Conversation() {
+        this.conversationId = ""; // Ensure non-null
+    }
 
-    public List<String> getParticipantIds() { return participantIds; }
-    public void setParticipantIds(List<String> participantIds) { this.participantIds = participantIds; }
+    //<editor-fold desc="Getters and Setters">
+    @NonNull
+    public String getConversationId() {
+        return conversationId;
+    }
 
-    public String getLastMessage() { return lastMessage; }
-    public void setLastMessage(String lastMessage) { this.lastMessage = lastMessage; }
+    public void setConversationId(@NonNull String conversationId) {
+        this.conversationId = conversationId;
+    }
 
-    public Timestamp getLastMessageTimestamp() { return lastMessageTimestamp; }
-    public void setLastMessageTimestamp(Timestamp lastMessageTimestamp) { this.lastMessageTimestamp = lastMessageTimestamp; }
+    public String getLastMessage() {
+        return lastMessage;
+    }
+
+    public void setLastMessage(String lastMessage) {
+        this.lastMessage = lastMessage;
+    }
+
+    public Date getLastMessageTimestamp() {
+        return lastMessageTimestamp;
+    }
+
+    public void setLastMessageTimestamp(Date lastMessageTimestamp) {
+        this.lastMessageTimestamp = lastMessageTimestamp;
+    }
+
+    public String getOtherUserId() {
+        return otherUserId;
+    }
+
+    public void setOtherUserId(String otherUserId) {
+        this.otherUserId = otherUserId;
+    }
+
+    public String getOtherUserName() {
+        return otherUserName;
+    }
+
+    public void setOtherUserName(String otherUserName) {
+        this.otherUserName = otherUserName;
+    }
+
+    public String getOtherUserAvatar() {
+        return otherUserAvatar;
+    }
+
+    public void setOtherUserAvatar(String otherUserAvatar) {
+        this.otherUserAvatar = otherUserAvatar;
+    }
+
+    public int getUnreadCount() {
+        return unreadCount;
+    }
+
+    public void setUnreadCount(int unreadCount) {
+        this.unreadCount = unreadCount;
+    }
+    //</editor-fold>
 }
