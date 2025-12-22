@@ -12,19 +12,21 @@ import com.testing.final_mobile.data.model.ChatMessage;
 import com.testing.final_mobile.data.model.Comment;
 import com.testing.final_mobile.data.model.Conversation;
 import com.testing.final_mobile.data.model.Post;
+import com.testing.final_mobile.data.model.User;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-// Add ChatMessage.class and Conversation.class to entities, increment version to 3
-@Database(entities = {Post.class, Comment.class, ChatMessage.class, Conversation.class}, version = 3, exportSchema = false)
+// Add User.class to entities, increment version to 4
+@Database(entities = {Post.class, Comment.class, ChatMessage.class, Conversation.class, User.class}, version = 4, exportSchema = false)
 @TypeConverters({DateConverter.class})
 public abstract class AppDatabase extends RoomDatabase {
 
     public abstract PostDao postDao();
     public abstract CommentDao commentDao();
-    public abstract ChatMessageDao chatMessageDao(); // Add new DAO
-    public abstract ConversationDao conversationDao(); // Add new DAO
+    public abstract ChatMessageDao chatMessageDao();
+    public abstract ConversationDao conversationDao();
+    public abstract UserDao userDao(); // Add new DAO
 
     private static volatile AppDatabase INSTANCE;
     private static final int NUMBER_OF_THREADS = 4;
