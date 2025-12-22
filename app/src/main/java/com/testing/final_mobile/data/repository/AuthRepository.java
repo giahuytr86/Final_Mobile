@@ -1,0 +1,72 @@
+package com.testing.final_mobile.data.repository;
+
+import android.util.Log;
+
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
+import com.testing.final_mobile.data.model.User;
+
+public class AuthRepository {
+
+    private static final String TAG = "AuthRepository";
+    private final FirebaseAuth firebaseAuth;
+    private final FirebaseFirestore firestore;
+
+    public interface AuthCallback {
+        void onSuccess(FirebaseUser user);
+        void onError(String message);
+    }
+
+    public AuthRepository() {
+        this.firebaseAuth = FirebaseAuth.getInstance();
+        this.firestore = FirebaseFirestore.getInstance();
+    }
+
+    public void registerUser(String email, String password, String fullName, AuthCallback callback) {
+        firebaseAuth.createUserWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        FirebaseUser firebaseUser = firebaseAuth.getCurrentUser();
+                        if (firebaseUser != null) {
+                            // Create a new user object
+                            User newUser = new User(firebaseUser.getUid(), fullName, email, "");
+
+                            // Save user to Firestore
+                            firestore.collection("users").document(firebaseUser.getUid())
+                                    .set(newUser)
+                                    .addOnCompleteListener(userTask -> {
+                                        if (userTask.isSuccessful()) {
+                                            callback.onSuccess(firebaseUser);
+                                        } else {
+                                            callback.onError(userTask.getException().getMessage());
+                                        }
+                                    });
+                        } else {
+                            callback.onError("Failed to get user after creation.");
+                        }
+                    } else {
+                        callback.onError(task.getException().getMessage());
+                    }
+                });
+    }
+
+    public void loginUser(String email, String password, AuthCallback callback) {
+        firebaseAuth.signInWithEmailAndPassword(email, password)
+                .addOnCompleteListener(task -> {
+                    if (task.isSuccessful()) {
+                        callback.onSuccess(task.getResult().getUser());
+                    } else {
+                        callback.onError(task.getException().getMessage());
+                    }
+                });
+    }
+
+    public void logout() {
+        firebaseAuth.signOut();
+    }
+
+    public FirebaseUser getCurrentUser() {
+        return firebaseAuth.getCurrentUser();
+    }
+}
