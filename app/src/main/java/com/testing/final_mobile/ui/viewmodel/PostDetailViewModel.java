@@ -5,8 +5,7 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.ViewModel;
-import androidx.lifecycle.ViewModelProvider;
+import androidx.lifecycle.MutableLiveData;
 
 import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.data.repository.PostRepository;
@@ -15,17 +14,35 @@ public class PostDetailViewModel extends AndroidViewModel {
 
     private final PostRepository postRepository;
 
+    private LiveData<Post> post;
+    private final MutableLiveData<String> _error = new MutableLiveData<>();
+    public final LiveData<String> error = _error;
+
     public PostDetailViewModel(@NonNull Application application) {
         super(application);
-        postRepository = new PostRepository(application);
+        this.postRepository = new PostRepository(application);
     }
 
-    /**
-     * Gets a single post by its ID. The LiveData is sourced from the Room database
-     * and is automatically updated when the repository fetches new data.
-     */
-    public LiveData<Post> getPostById(String postId) {
-        return postRepository.getPostById(postId);
+    public void fetchPost(String postId) {
+        post = postRepository.getPostById(postId);
     }
 
+    public LiveData<Post> getPost() {
+        return post;
+    }
+
+    public void toggleLikeStatus(String postId) {
+        postRepository.toggleLikeStatus(postId, new PostRepository.OnPostLikedListener() {
+            @Override
+            public void onPostLiked() {
+                // The LiveData will update automatically, so we might not need to do anything here.
+                // Or we can post a success event if needed.
+            }
+
+            @Override
+            public void onError(Exception e) {
+                _error.postValue(e.getMessage());
+            }
+        });
+    }
 }

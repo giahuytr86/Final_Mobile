@@ -18,7 +18,7 @@ public interface PostDao {
     LiveData<List<Post>> getAllPosts();
 
     // Returns a single post as LiveData.
-    @Query("SELECT * FROM posts WHERE postId = :postId")
+    @Query("SELECT * FROM posts WHERE id = :postId")
     LiveData<Post> getPostById(String postId);
 
     // Inserts a list of posts. If a post already exists, it will be replaced.

@@ -6,6 +6,7 @@ import android.text.TextUtils;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -17,9 +18,10 @@ import com.testing.final_mobile.ui.viewmodel.AuthViewModel;
 
 public class RegisterActivity extends AppCompatActivity {
 
-    private EditText etRegId, etRegEmail, etRegPassword, etRegConfirmPass;
+    private EditText etRegUsername, etRegEmail, etRegPassword, etRegConfirmPass;
     private AppCompatButton btnRegisterSubmit;
     private ProgressBar progressBar;
+    private TextView tvLoginLink;
 
     private AuthViewModel authViewModel;
 
@@ -39,23 +41,28 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void initViews() {
-        etRegId = findViewById(R.id.etRegId);
+        etRegUsername = findViewById(R.id.etRegUsername);
         etRegEmail = findViewById(R.id.etRegEmail);
         etRegPassword = findViewById(R.id.etRegPassword);
         etRegConfirmPass = findViewById(R.id.etRegConfirmPass);
         btnRegisterSubmit = findViewById(R.id.btnRegisterSubmit);
         progressBar = findViewById(R.id.progressBar);
+        tvLoginLink = findViewById(R.id.tvLoginLink);
     }
 
     private void initEvents() {
         btnRegisterSubmit.setOnClickListener(v -> performRegistration());
+        tvLoginLink.setOnClickListener(v -> {
+            // Navigate back to LoginActivity
+            finish();
+        });
     }
 
     private void observeViewModel() {
         authViewModel.user.observe(this, firebaseUser -> {
             if (firebaseUser != null) {
-                Toast.makeText(this, "Registration successful!", Toast.LENGTH_SHORT).show();
-                // Navigate to Login screen
+                Toast.makeText(this, "Registration successful! Please log in.", Toast.LENGTH_SHORT).show();
+                // Navigate to Login screen after successful registration
                 Intent intent = new Intent(RegisterActivity.this, LoginActivity.class);
                 intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
                 startActivity(intent);
@@ -76,13 +83,13 @@ public class RegisterActivity extends AppCompatActivity {
     }
 
     private void performRegistration() {
-        String fullName = etRegId.getText().toString().trim();
+        String username = etRegUsername.getText().toString().trim();
         String email = etRegEmail.getText().toString().trim();
         String password = etRegPassword.getText().toString().trim();
         String confirmPass = etRegConfirmPass.getText().toString().trim();
 
-        if (TextUtils.isEmpty(fullName)) {
-            etRegId.setError("Full name is required");
+        if (TextUtils.isEmpty(username)) {
+            etRegUsername.setError("Username is required");
             return;
         }
         if (TextUtils.isEmpty(email)) {
@@ -98,6 +105,6 @@ public class RegisterActivity extends AppCompatActivity {
             return;
         }
 
-        authViewModel.register(email, password, fullName);
+        authViewModel.register(email, password, username);
     }
 }

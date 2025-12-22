@@ -21,7 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PostDetailActivity extends AppCompatActivity implements CommentAdapter.OnCommentInteractionListener {
+public class PostDetailActivity extends AppCompatActivity implements CommentAdapter.OnCommentInteractionListener, PostAdapter.OnPostInteractionListener {
 
     public static final String EXTRA_POST_ID = "EXTRA_POST_ID";
     private ActivityPostDetailBinding binding;
@@ -31,7 +31,7 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
     private CommentAdapter commentAdapter;
     private String postId;
 
-    private Comment replyingToComment = null; // To hold the comment being replied to
+    private Comment replyingToComment = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,7 +60,7 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
     }
 
     private void setupRecyclerViews() {
-        postAdapter = new PostAdapter(null); // No listener needed for post in detail view
+        postAdapter = new PostAdapter(this);
         binding.rvPostContent.setLayoutManager(new LinearLayoutManager(this));
         binding.rvPostContent.setAdapter(postAdapter);
 
@@ -76,7 +76,7 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
         binding.btnSendComment.setOnClickListener(v -> {
             String content = binding.etComment.getText().toString().trim();
             if (!content.isEmpty()) {
-                String parentId = (replyingToComment != null) ? replyingToComment.getCommentId() : null;
+                String parentId = (replyingToComment != null) ? replyingToComment.getId() : null;
                 commentViewModel.addComment(postId, content, parentId);
             }
         });
@@ -85,7 +85,7 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
     }
 
     private void observeViewModels() {
-        postViewModel.post.observe(this, post -> {
+        postViewModel.getPost().observe(this, post -> {
             if (post != null) {
                 postAdapter.submitList(Collections.singletonList(post));
             }
@@ -124,14 +124,16 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
     @Override
     public void onReplyClicked(Comment comment) {
         replyingToComment = comment;
-        binding.tvReplyingTo.setText("Replying to " + comment.getUserName());
+        binding.tvReplyingTo.setText("Replying to " + comment.getUsername());
         binding.layoutReplyBanner.setVisibility(View.VISIBLE);
         binding.etComment.requestFocus();
     }
 
+    // onLikeClicked(Comment comment) is removed as the feature is no longer supported
+
     @Override
-    public void onLikeClicked(Comment comment) {
-        commentViewModel.toggleLikeStatus(postId, comment.getCommentId());
+    public void onLikeClicked(String postId) {
+        postViewModel.toggleLikeStatus(postId);
     }
 
     private void cancelReply() {
@@ -144,6 +146,10 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
 
         Map<String, List<Comment>> repliesMap = new HashMap<>();
         List<Comment> topLevelComments = new ArrayList<>();
+
+        if (flatList.size() > 0 && flatList.get(0).getTimestamp() != null) {
+            Collections.sort(flatList, (c1, c2) -> c1.getTimestamp().compareTo(c2.getTimestamp()));
+        }
 
         for (Comment comment : flatList) {
             if (comment.getParentCommentId() != null) {
@@ -158,7 +164,7 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
         List<Comment> sortedList = new ArrayList<>();
         for (Comment topComment : topLevelComments) {
             sortedList.add(topComment);
-            List<Comment> replies = repliesMap.get(topComment.getCommentId());
+            List<Comment> replies = repliesMap.get(topComment.getId());
             if (replies != null) {
                 sortedList.addAll(replies);
             }

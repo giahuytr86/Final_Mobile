@@ -1,13 +1,14 @@
 package com.testing.final_mobile.ui.activity;
 
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.testing.final_mobile.databinding.AcitivityCreatePostBinding;
+import com.testing.final_mobile.databinding.AcitivityCreatePostBinding; // Corrected filename
 import com.testing.final_mobile.ui.viewmodel.CreatePostViewModel;
 
 public class CreatePostActivity extends AppCompatActivity {
@@ -29,40 +30,32 @@ public class CreatePostActivity extends AppCompatActivity {
 
     private void setupClickListeners() {
         binding.btnClose.setOnClickListener(v -> finish());
-
         binding.btnPost.setOnClickListener(v -> {
             String content = binding.etContent.getText().toString().trim();
-            if (content.isEmpty()) {
-                Toast.makeText(this, "What's happening?", Toast.LENGTH_SHORT).show();
-                return;
+            if (!TextUtils.isEmpty(content)) {
+                viewModel.createPost(content);
+            } else {
+                Toast.makeText(this, "Content cannot be empty", Toast.LENGTH_SHORT).show();
             }
-            // For now, we pass a null imageUrl. You can add image selection logic later.
-            viewModel.createPost(content, null);
         });
     }
 
     private void observeViewModel() {
         viewModel.isLoading.observe(this, isLoading -> {
-            if (isLoading) {
-                binding.btnPost.setEnabled(false);
-                binding.btnPost.setText("POSTING...");
-                // You could also show a ProgressBar here
-            } else {
-                binding.btnPost.setEnabled(true);
-                binding.btnPost.setText("POST");
-            }
+            binding.btnPost.setEnabled(!isLoading);
+            // You might want to add a ProgressBar to the layout and control it here
         });
 
-        viewModel.isPostCreated.observe(this, isCreated -> {
-            if (isCreated) {
-                Toast.makeText(this, "Posted successfully!", Toast.LENGTH_SHORT).show();
+        viewModel.postCreated.observe(this, isSuccess -> {
+            if (isSuccess) {
+                Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show();
                 finish();
             }
         });
 
         viewModel.error.observe(this, error -> {
-            if (error != null && !error.isEmpty()) {
-                Toast.makeText(this, error, Toast.LENGTH_LONG).show();
+            if (error != null) {
+                Toast.makeText(this, "Error: " + error, Toast.LENGTH_LONG).show();
             }
         });
     }

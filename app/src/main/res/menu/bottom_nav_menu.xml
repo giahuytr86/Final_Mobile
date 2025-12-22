@@ -1,27 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+
     <item
-        android:id="@+id/nav_home"
-        android:icon="@drawable/ic_home"
+        android:id="@+id/navigation_home"
+        android:icon="@drawable/ic_home_filled"
         android:title="Home" />
 
     <item
-        android:id="@+id/nav_search"
+        android:id="@+id/navigation_search"
         android:icon="@drawable/ic_search"
         android:title="Search" />
 
     <item
-        android:id="@+id/nav_create"
+        android:id="@+id/navigation_add_post"
         android:icon="@drawable/ic_plus_square"
         android:title="Post" />
 
     <item
-        android:id="@+id/nav_messages"
-        android:icon="@drawable/ic_message_circle"
-        android:title="Chat" />
+        android:id="@+id/navigation_notifications"
+        android:icon="@drawable/ic_heart_outline"
+        android:title="Activity" />
 
     <item
-        android:id="@+id/nav_profile"
+        android:id="@+id/navigation_profile"
         android:icon="@drawable/ic_user"
         android:title="Profile" />
+
 </menu>

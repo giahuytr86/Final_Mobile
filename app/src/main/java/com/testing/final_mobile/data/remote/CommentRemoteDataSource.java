@@ -13,7 +13,6 @@ import com.testing.final_mobile.data.remote.core.FirestoreService;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 public class CommentRemoteDataSource {
 
@@ -34,60 +33,26 @@ public class CommentRemoteDataSource {
         void onError(Exception e);
     }
 
-    public interface OnCommentLikeUpdatedListener {
-        void onCommentLikeUpdated();
-        void onError(Exception e);
-    }
+    // OnCommentLikeUpdatedListener is removed as the feature is no longer supported
+
     //</editor-fold>
 
     public CommentRemoteDataSource(FirestoreService firestoreService) {
         this.firestoreService = firestoreService;
     }
 
-    public void toggleLikeStatus(String postId, String commentId, String userId, OnCommentLikeUpdatedListener listener) {
-        String commentPath = POST_COLLECTION + "/" + postId + "/" + COMMENT_SUB_COLLECTION;
-        DocumentReference commentRef = firestoreService.getDocument(commentPath, commentId);
-
-        Transaction.Function<Void> updateFunction = transaction -> {
-            Comment comment = transaction.get(commentRef).toObject(Comment.class);
-            if (comment == null) {
-                throw new FirebaseFirestoreException("Comment not found", FirebaseFirestoreException.Code.NOT_FOUND);
-            }
-
-            Map<String, Boolean> likes = comment.getLikes();
-            if (likes.containsKey(userId)) {
-                likes.remove(userId);
-                comment.setLikeCount(comment.getLikeCount() - 1);
-            } else {
-                likes.put(userId, true);
-                comment.setLikeCount(comment.getLikeCount() + 1);
-            }
-            transaction.set(commentRef, comment);
-            return null;
-        };
-
-        firestoreService.runTransaction(updateFunction, (OnCompleteListener<Void>) task -> {
-            if (task.isSuccessful()) {
-                listener.onCommentLikeUpdated();
-            } else {
-                Log.e(TAG, "Like transaction failed for comment", task.getException());
-                if (task.getException() != null) {
-                    listener.onError(task.getException());
-                }
-            }
-        });
-    }
+    // toggleLikeStatus method has been completely removed.
 
     public void fetchCommentsForPost(String postId, OnCommentsFetchedListener listener) {
         String commentPath = POST_COLLECTION + "/" + postId + "/" + COMMENT_SUB_COLLECTION;
-        Query query = firestoreService.getCollection(commentPath).orderBy("createdAt", Query.Direction.ASCENDING);
+        Query query = firestoreService.getCollection(commentPath).orderBy("timestamp", Query.Direction.ASCENDING);
 
         firestoreService.getCollection(query, task -> {
             if (task.isSuccessful() && task.getResult() != null) {
                 List<Comment> comments = new ArrayList<>();
                 for (QueryDocumentSnapshot doc : task.getResult()) {
                     Comment comment = doc.toObject(Comment.class);
-                    comment.setCommentId(doc.getId());
+                    comment.setId(doc.getId());
                     comment.setPostId(postId);
                     comments.add(comment);
                 }

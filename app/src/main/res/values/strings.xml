@@ -1,13 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">iT Social</string>
-    <string name="placeholder_username">@username</string>
-    <string name="welcome_back">Welcome Back</string>
-    <string name="login">Log In</string>
-    <string name="register">Register</string>
-    <string name="email_hint">Email</string>
-    <string name="password_hint">Password</string>
+    <string name="app_name">IT Social</string>
+    <string name="placeholder_username">\@username</string>
     <string name="comments_title">Comments</string>
-    <string name="reply_action">Reply</string>
-    <string name="replying_to">Replying to %s</string>
     <string name="write_comment">Write a comment...</string>
 </resources>

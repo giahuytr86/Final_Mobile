@@ -13,6 +13,8 @@ import com.testing.final_mobile.R;
 import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.databinding.ItemUserBinding;
 
+import java.util.Objects;
+
 public class UserAdapter extends ListAdapter<User, UserAdapter.UserViewHolder> {
 
     public UserAdapter() {
@@ -27,8 +29,9 @@ public class UserAdapter extends ListAdapter<User, UserAdapter.UserViewHolder> {
 
         @Override
         public boolean areContentsTheSame(@NonNull User oldItem, @NonNull User newItem) {
-            return oldItem.getDisplayName().equals(newItem.getDisplayName()) &&
-                   oldItem.getAvatar().equals(newItem.getAvatar());
+            // Corrected to use new getters and be null-safe
+            return Objects.equals(oldItem.getUsername(), newItem.getUsername()) &&
+                   Objects.equals(oldItem.getAvatarUrl(), newItem.getAvatarUrl());
         }
     };
 
@@ -53,12 +56,17 @@ public class UserAdapter extends ListAdapter<User, UserAdapter.UserViewHolder> {
         }
 
         public void bind(User user) {
-            binding.tvUserName.setText(user.getDisplayName());
-            // You can construct a handle from the display name or add a new field
-            binding.tvUserHandle.setText("@" + user.getDisplayName().toLowerCase().replaceAll("\\s", ""));
+            // Corrected to use getUsername()
+            binding.tvUserName.setText(user.getUsername());
+            if (user.getUsername() != null) {
+                binding.tvUserHandle.setText("@" + user.getUsername().toLowerCase().replaceAll("\\s", ""));
+            } else {
+                binding.tvUserHandle.setText("@user");
+            }
 
+            // Corrected to use getAvatarUrl()
             Glide.with(itemView.getContext())
-                    .load(user.getAvatar())
+                    .load(user.getAvatarUrl())
                     .placeholder(R.drawable.placeholder_avatar)
                     .circleCrop()
                     .into(binding.ivUserAvatar);

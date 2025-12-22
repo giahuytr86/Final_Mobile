@@ -6,14 +6,18 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.util.Log;
 
+import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.testing.final_mobile.data.local.AppDatabase;
 import com.testing.final_mobile.data.local.PostDao;
 import com.testing.final_mobile.data.model.Post;
+import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.data.remote.PostRemoteDataSource;
 import com.testing.final_mobile.data.remote.core.FirestoreService;
 
@@ -27,8 +31,9 @@ public class PostRepository {
     private final PostDao postDao;
     private final PostRemoteDataSource remoteDataSource;
     private final Application application;
+    private final FirebaseFirestore firestore;
+    private final FirebaseAuth auth;
 
-    //<editor-fold desc="Interfaces">
     public interface OnPostCreatedListener {
         void onPostCreated();
         void onError(Exception e);
@@ -38,13 +43,61 @@ public class PostRepository {
         void onPostLiked();
         void onError(Exception e);
     }
-    //</editor-fold>
 
     public PostRepository(Application application) {
         AppDatabase database = AppDatabase.getDatabase(application);
         this.postDao = database.postDao();
         this.remoteDataSource = new PostRemoteDataSource(new FirestoreService());
         this.application = application;
+        this.firestore = FirebaseFirestore.getInstance();
+        this.auth = FirebaseAuth.getInstance();
+    }
+
+    public void createPost(String content, OnPostCreatedListener listener) {
+        if (!isNetworkAvailable()) {
+            listener.onError(new Exception("No internet connection"));
+            return;
+        }
+
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser == null) {
+            listener.onError(new Exception("User not logged in"));
+            return;
+        }
+
+        firestore.collection("users").document(currentUser.getUid()).get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    User user = documentSnapshot.toObject(User.class);
+                    String username = (user != null && user.getUsername() != null) ? user.getUsername() : currentUser.getEmail();
+                    String avatarUrl = (user != null) ? user.getAvatarUrl() : null;
+                    createPostInFirestore(content, currentUser.getUid(), username, avatarUrl, listener);
+                })
+                .addOnFailureListener(listener::onError);
+    }
+
+    private void createPostInFirestore(String content, String userId, String username, String avatarUrl, OnPostCreatedListener listener) {
+        DocumentReference newPostRef = remoteDataSource.getNewPostReference();
+
+        Post newPost = new Post();
+        newPost.setId(newPostRef.getId());
+        newPost.setUserId(userId);
+        newPost.setUsername(username);
+        newPost.setAvatarUrl(avatarUrl);
+        newPost.setContent(content);
+        newPost.setImageUrl(null); // Image is no longer supported
+
+        remoteDataSource.createPost(newPost, new PostRemoteDataSource.OnPostCreatedListener() {
+            @Override
+            public void onPostCreated(DocumentReference documentReference) {
+                refreshPostFromServer(documentReference.getId());
+                listener.onPostCreated();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                listener.onError(e);
+            }
+        });
     }
 
     public void searchPosts(String searchTerm, MutableLiveData<List<Post>> searchResults, MutableLiveData<String> error) {
@@ -62,7 +115,7 @@ public class PostRepository {
     }
 
     public void toggleLikeStatus(String postId, OnPostLikedListener listener) {
-        String currentUserId = FirebaseAuth.getInstance().getUid();
+        String currentUserId = auth.getUid();
         if (currentUserId == null || !isNetworkAvailable()) {
             listener.onError(new Exception("Not logged in or no network"));
             return;
@@ -73,26 +126,6 @@ public class PostRepository {
             public void onPostLikeUpdated() {
                 refreshPostFromServer(postId);
                 listener.onPostLiked();
-            }
-
-            @Override
-            public void onError(Exception e) {
-                listener.onError(e);
-            }
-        });
-    }
-
-    public void createPost(Post newPost, OnPostCreatedListener listener) {
-        if (!isNetworkAvailable()) {
-            listener.onError(new Exception("No internet connection"));
-            return;
-        }
-
-        remoteDataSource.createPost(newPost, new PostRemoteDataSource.OnPostCreatedListener() {
-            @Override
-            public void onPostCreated(DocumentReference documentReference) {
-                refreshPostFromServer(documentReference.getId());
-                listener.onPostCreated();
             }
 
             @Override

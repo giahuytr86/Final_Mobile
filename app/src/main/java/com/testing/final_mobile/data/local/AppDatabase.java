@@ -7,7 +7,6 @@ import androidx.room.Room;
 import androidx.room.RoomDatabase;
 import androidx.room.TypeConverters;
 
-import com.testing.final_mobile.data.local.converters.DateConverter;
 import com.testing.final_mobile.data.model.ChatMessage;
 import com.testing.final_mobile.data.model.Comment;
 import com.testing.final_mobile.data.model.Conversation;
@@ -17,16 +16,17 @@ import com.testing.final_mobile.data.model.User;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-// Add User.class to entities, increment version to 4
-@Database(entities = {Post.class, Comment.class, ChatMessage.class, Conversation.class, User.class}, version = 4, exportSchema = false)
-@TypeConverters({DateConverter.class})
+// Incremented version to 5 due to schema changes in Post/Comment entities.
+// Consolidated all type converters into the single Converters.class to resolve conflicts.
+@Database(entities = {Post.class, Comment.class, ChatMessage.class, Conversation.class, User.class}, version = 5, exportSchema = false)
+@TypeConverters(Converters.class)
 public abstract class AppDatabase extends RoomDatabase {
 
     public abstract PostDao postDao();
     public abstract CommentDao commentDao();
     public abstract ChatMessageDao chatMessageDao();
     public abstract ConversationDao conversationDao();
-    public abstract UserDao userDao(); // Add new DAO
+    public abstract UserDao userDao();
 
     private static volatile AppDatabase INSTANCE;
     private static final int NUMBER_OF_THREADS = 4;
@@ -38,6 +38,7 @@ public abstract class AppDatabase extends RoomDatabase {
                 if (INSTANCE == null) {
                     INSTANCE = Room.databaseBuilder(context.getApplicationContext(),
                                     AppDatabase.class, "app_database")
+                            // Destructive migration is enabled, so incrementing the version will clear the DB.
                             .fallbackToDestructiveMigration()
                             .build();
                 }
