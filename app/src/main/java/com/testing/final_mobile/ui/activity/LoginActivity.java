@@ -16,7 +16,6 @@ import androidx.lifecycle.ViewModelProvider;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.testing.final_mobile.R;
-import com.testing.final_mobile.ui.MainActivity; // Added import
 import com.testing.final_mobile.ui.viewmodel.AuthViewModel;
 
 public class LoginActivity extends AppCompatActivity {

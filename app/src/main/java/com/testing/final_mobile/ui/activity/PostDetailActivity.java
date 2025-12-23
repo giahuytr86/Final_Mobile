@@ -5,15 +5,20 @@ import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
+import com.bumptech.glide.Glide;
+import com.google.firebase.auth.FirebaseAuth;
+import com.testing.final_mobile.R;
 import com.testing.final_mobile.data.model.Comment;
+import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.databinding.ActivityPostDetailBinding;
 import com.testing.final_mobile.ui.adapter.CommentAdapter;
-import com.testing.final_mobile.ui.adapter.PostAdapter;
 import com.testing.final_mobile.ui.viewmodel.CommentViewModel;
 import com.testing.final_mobile.ui.viewmodel.PostDetailViewModel;
+import com.testing.final_mobile.utils.TimestampConverter;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -21,13 +26,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class PostDetailActivity extends AppCompatActivity implements CommentAdapter.OnCommentInteractionListener, PostAdapter.OnPostInteractionListener {
+public class PostDetailActivity extends AppCompatActivity implements CommentAdapter.OnCommentInteractionListener {
 
     public static final String EXTRA_POST_ID = "EXTRA_POST_ID";
     private ActivityPostDetailBinding binding;
     private PostDetailViewModel postViewModel;
     private CommentViewModel commentViewModel;
-    private PostAdapter postAdapter;
     private CommentAdapter commentAdapter;
     private String postId;
 
@@ -47,7 +51,7 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
         }
 
         setupViewModels();
-        setupRecyclerViews();
+        setupRecyclerView();
         setupClickListeners();
         observeViewModels();
 
@@ -59,11 +63,7 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
         commentViewModel = new ViewModelProvider(this).get(CommentViewModel.class);
     }
 
-    private void setupRecyclerViews() {
-        postAdapter = new PostAdapter(this);
-        binding.rvPostContent.setLayoutManager(new LinearLayoutManager(this));
-        binding.rvPostContent.setAdapter(postAdapter);
-
+    private void setupRecyclerView() {
         commentAdapter = new CommentAdapter(this);
         binding.rvComments.setLayoutManager(new LinearLayoutManager(this));
         binding.rvComments.setAdapter(commentAdapter);
@@ -72,6 +72,10 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
 
     private void setupClickListeners() {
         binding.toolbar.setNavigationOnClickListener(v -> finish());
+
+        binding.ivLikeIcon.setOnClickListener(v -> {
+            postViewModel.toggleLikeStatus(postId);
+        });
 
         binding.btnSendComment.setOnClickListener(v -> {
             String content = binding.etComment.getText().toString().trim();
@@ -85,11 +89,7 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
     }
 
     private void observeViewModels() {
-        postViewModel.getPost().observe(this, post -> {
-            if (post != null) {
-                postAdapter.submitList(Collections.singletonList(post));
-            }
-        });
+        postViewModel.getPost().observe(this, this::updatePostUi);
 
         postViewModel.error.observe(this, error -> {
             if (error != null && !error.isEmpty()) {
@@ -121,19 +121,47 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
         });
     }
 
+    private void updatePostUi(Post post) {
+        if (post == null) return;
+
+        binding.tvUserName.setText(post.getUsername());
+        binding.tvPostContent.setText(post.getContent());
+        binding.tvLikeCount.setText(String.valueOf(post.getLikes().size()));
+        binding.tvCommentCount.setText(String.valueOf(post.getCommentCount()));
+
+        if (post.getTimestamp() != null) {
+            binding.tvPostDate.setText(TimestampConverter.getTimeAgo(post.getTimestamp()));
+        }
+
+        Glide.with(this)
+                .load(post.getAvatarUrl())
+                .placeholder(R.drawable.placeholder_avatar)
+                .circleCrop()
+                .into(binding.ivUserAvatar);
+
+        if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
+            binding.ivPostImage.setVisibility(View.VISIBLE);
+            Glide.with(this).load(post.getImageUrl()).into(binding.ivPostImage);
+        } else {
+            binding.ivPostImage.setVisibility(View.GONE);
+        }
+
+        String currentUserId = FirebaseAuth.getInstance().getUid();
+        if (currentUserId != null && post.getLikes().contains(currentUserId)) {
+            binding.ivLikeIcon.setImageResource(R.drawable.ic_heart_filled);
+            binding.ivLikeIcon.setColorFilter(ContextCompat.getColor(this, R.color.red));
+        } else {
+            binding.ivLikeIcon.setImageResource(R.drawable.ic_heart_outline);
+            binding.ivLikeIcon.setColorFilter(ContextCompat.getColor(this, R.color.text_gray));
+        }
+    }
+
     @Override
     public void onReplyClicked(Comment comment) {
         replyingToComment = comment;
         binding.tvReplyingTo.setText("Replying to " + comment.getUsername());
         binding.layoutReplyBanner.setVisibility(View.VISIBLE);
         binding.etComment.requestFocus();
-    }
-
-    // onLikeClicked(Comment comment) is removed as the feature is no longer supported
-
-    @Override
-    public void onLikeClicked(String postId) {
-        postViewModel.toggleLikeStatus(postId);
     }
 
     private void cancelReply() {
@@ -147,15 +175,13 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
         Map<String, List<Comment>> repliesMap = new HashMap<>();
         List<Comment> topLevelComments = new ArrayList<>();
 
-        if (flatList.size() > 0 && flatList.get(0).getTimestamp() != null) {
+        if (!flatList.isEmpty() && flatList.get(0).getTimestamp() != null) {
             Collections.sort(flatList, (c1, c2) -> c1.getTimestamp().compareTo(c2.getTimestamp()));
         }
 
         for (Comment comment : flatList) {
             if (comment.getParentCommentId() != null) {
-                List<Comment> replies = repliesMap.getOrDefault(comment.getParentCommentId(), new ArrayList<>());
-                replies.add(comment);
-                repliesMap.put(comment.getParentCommentId(), replies);
+                repliesMap.computeIfAbsent(comment.getParentCommentId(), k -> new ArrayList<>()).add(comment);
             } else {
                 topLevelComments.add(comment);
             }

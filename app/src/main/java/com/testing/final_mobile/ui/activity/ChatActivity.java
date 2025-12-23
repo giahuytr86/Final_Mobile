@@ -1,7 +1,6 @@
 package com.testing.final_mobile.ui.activity;
 
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -10,17 +9,17 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.testing.final_mobile.databinding.ActivityChatBinding;
 import com.testing.final_mobile.ui.adapter.ChatMessageAdapter;
-import com.testing.final_mobile.ui.viewmodel.ChatViewModel;
+import com.testing.final_mobile.ui.viewmodel.MessageViewModel;
 
 public class ChatActivity extends AppCompatActivity {
 
-    public static final String EXTRA_CONVERSATION_ID = "EXTRA_CONVERSATION_ID";
-    public static final String EXTRA_OTHER_USER_ID = "EXTRA_OTHER_USER_ID";
+    public static final String EXTRA_RECEIVER_ID = "EXTRA_RECEIVER_ID";
+    public static final String EXTRA_RECEIVER_NAME = "EXTRA_RECEIVER_NAME";
 
     private ActivityChatBinding binding;
-    private ChatViewModel viewModel;
+    private MessageViewModel viewModel;
     private ChatMessageAdapter adapter;
-    private String conversationId;
+    private String receiverId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,18 +27,29 @@ public class ChatActivity extends AppCompatActivity {
         binding = ActivityChatBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        conversationId = getIntent().getStringExtra(EXTRA_CONVERSATION_ID);
-        if (conversationId == null) {
-            Toast.makeText(this, "Conversation ID is missing.", Toast.LENGTH_SHORT).show();
+        receiverId = getIntent().getStringExtra(EXTRA_RECEIVER_ID);
+        String receiverName = getIntent().getStringExtra(EXTRA_RECEIVER_NAME);
+
+        if (receiverId == null) {
+            Toast.makeText(this, "Receiver ID is missing", Toast.LENGTH_SHORT).show();
             finish();
             return;
         }
 
-        viewModel = new ViewModelProvider(this).get(ChatViewModel.class);
+        viewModel = new ViewModelProvider(this).get(MessageViewModel.class);
+        viewModel.init(receiverId);
 
+        setupToolbar(receiverName);
         setupRecyclerView();
-        setupClickListeners();
         observeViewModel();
+        setupSendButton();
+    }
+
+    private void setupToolbar(String title) {
+        setSupportActionBar(binding.toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setTitle(title != null ? title : "Chat");
+        binding.toolbar.setNavigationOnClickListener(v -> onBackPressed());
     }
 
     private void setupRecyclerView() {
@@ -50,34 +60,33 @@ public class ChatActivity extends AppCompatActivity {
         binding.rvMessages.setAdapter(adapter);
     }
 
-    private void setupClickListeners() {
-        binding.toolbar.setNavigationOnClickListener(v -> finish());
+    private void observeViewModel() {
+        viewModel.getMessages().observe(this, messages -> {
+            adapter.submitList(messages, () -> {
+                // Scroll to the bottom to show the latest message
+                if (adapter.getItemCount() > 0) {
+                    binding.rvMessages.smoothScrollToPosition(adapter.getItemCount() - 1);
+                }
+            });
+        });
 
-        binding.btnSend.setOnClickListener(v -> {
-            String messageText = binding.etMessage.getText().toString().trim();
-            if (!messageText.isEmpty()) {
-                viewModel.sendMessage(conversationId, messageText);
+        viewModel.isMessageSent().observe(this, sent -> {
+            if (sent) {
                 binding.etMessage.setText("");
+            }
+        });
+
+        viewModel.getError().observe(this, error -> {
+            if (error != null) {
+                Toast.makeText(this, "Error: " + error, Toast.LENGTH_SHORT).show();
             }
         });
     }
 
-    private void observeViewModel() {
-        viewModel.getMessagesForConversation(conversationId).observe(this, messages -> {
-            if (messages != null) {
-                adapter.submitList(messages);
-                binding.rvMessages.scrollToPosition(messages.size() - 1);
-            }
-        });
-
-        viewModel.isSending.observe(this, isSending -> {
-            binding.btnSend.setEnabled(!isSending);
-        });
-
-        viewModel.error.observe(this, error -> {
-            if (error != null && !error.isEmpty()) {
-                Toast.makeText(this, error, Toast.LENGTH_SHORT).show();
-            }
+    private void setupSendButton() {
+        binding.btnSend.setOnClickListener(v -> {
+            String messageText = binding.etMessage.getText().toString();
+            viewModel.sendMessage(messageText, receiverId);
         });
     }
 }

@@ -4,6 +4,7 @@ import android.app.Application;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.net.Uri;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
@@ -20,6 +21,7 @@ import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.data.remote.PostRemoteDataSource;
 import com.testing.final_mobile.data.remote.core.FirestoreService;
+import com.testing.final_mobile.data.remote.core.StorageService;
 
 import java.util.Collections;
 import java.util.List;
@@ -30,6 +32,7 @@ public class PostRepository {
 
     private final PostDao postDao;
     private final PostRemoteDataSource remoteDataSource;
+    private final StorageService storageService;
     private final Application application;
     private final FirebaseFirestore firestore;
     private final FirebaseAuth auth;
@@ -48,12 +51,13 @@ public class PostRepository {
         AppDatabase database = AppDatabase.getDatabase(application);
         this.postDao = database.postDao();
         this.remoteDataSource = new PostRemoteDataSource(new FirestoreService());
+        this.storageService = new StorageService(); // Initialize StorageService
         this.application = application;
         this.firestore = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
     }
 
-    public void createPost(String content, OnPostCreatedListener listener) {
+    public void createPost(String content, @Nullable Uri imageUri, OnPostCreatedListener listener) {
         if (!isNetworkAvailable()) {
             listener.onError(new Exception("No internet connection"));
             return;
@@ -65,17 +69,35 @@ public class PostRepository {
             return;
         }
 
+        if (imageUri != null) {
+            storageService.uploadImageAndGetDownloadUrl(imageUri, new StorageService.OnImageUploadListener() {
+                @Override
+                public void onSuccess(String downloadUrl) {
+                    fetchUserAndCreatePost(content, downloadUrl, currentUser, listener);
+                }
+
+                @Override
+                public void onError(Exception e) {
+                    listener.onError(e);
+                }
+            });
+        } else {
+            fetchUserAndCreatePost(content, null, currentUser, listener);
+        }
+    }
+
+    private void fetchUserAndCreatePost(String content, @Nullable String imageUrl, FirebaseUser currentUser, OnPostCreatedListener listener) {
         firestore.collection("users").document(currentUser.getUid()).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     User user = documentSnapshot.toObject(User.class);
                     String username = (user != null && user.getUsername() != null) ? user.getUsername() : currentUser.getEmail();
                     String avatarUrl = (user != null) ? user.getAvatarUrl() : null;
-                    createPostInFirestore(content, currentUser.getUid(), username, avatarUrl, listener);
+                    createPostInFirestore(content, imageUrl, currentUser.getUid(), username, avatarUrl, listener);
                 })
                 .addOnFailureListener(listener::onError);
     }
 
-    private void createPostInFirestore(String content, String userId, String username, String avatarUrl, OnPostCreatedListener listener) {
+    private void createPostInFirestore(String content, @Nullable String imageUrl, String userId, String username, String avatarUrl, OnPostCreatedListener listener) {
         DocumentReference newPostRef = remoteDataSource.getNewPostReference();
 
         Post newPost = new Post();
@@ -84,7 +106,7 @@ public class PostRepository {
         newPost.setUsername(username);
         newPost.setAvatarUrl(avatarUrl);
         newPost.setContent(content);
-        newPost.setImageUrl(null); // Image is no longer supported
+        newPost.setImageUrl(imageUrl);
 
         remoteDataSource.createPost(newPost, new PostRemoteDataSource.OnPostCreatedListener() {
             @Override

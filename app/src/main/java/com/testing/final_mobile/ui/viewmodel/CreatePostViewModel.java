@@ -1,6 +1,7 @@
 package com.testing.final_mobile.ui.viewmodel;
 
 import android.app.Application;
+import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
@@ -27,9 +28,9 @@ public class CreatePostViewModel extends AndroidViewModel {
         this.postRepository = new PostRepository(application);
     }
 
-    public void createPost(String content) {
+    public void createPost(String content, Uri imageUri) {
         _isLoading.setValue(true);
-        postRepository.createPost(content, new PostRepository.OnPostCreatedListener() {
+        postRepository.createPost(content, imageUri, new PostRepository.OnPostCreatedListener() {
             @Override
             public void onPostCreated() {
                 _isLoading.postValue(false);

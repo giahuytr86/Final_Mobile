@@ -7,73 +7,113 @@ import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
+import com.google.firebase.auth.FirebaseAuth;
+import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.data.repository.PostRepository;
 import com.testing.final_mobile.data.repository.UserRepository;
+
+import java.util.List;
 
 public class ProfileViewModel extends AndroidViewModel {
 
     private final UserRepository userRepository;
     private final PostRepository postRepository;
+    private final String currentUserId;
 
-    public LiveData<User> user;
+    private final MutableLiveData<User> _user = new MutableLiveData<>();
+    private final MutableLiveData<List<Post>> _posts = new MutableLiveData<>();
+    private final MutableLiveData<Boolean> _isFollowing = new MutableLiveData<>();
     private final MutableLiveData<Boolean> _isLoading = new MutableLiveData<>(false);
-    public final LiveData<Boolean> isLoading = _isLoading;
-
     private final MutableLiveData<String> _error = new MutableLiveData<>();
-    public final LiveData<String> error = _error;
+
+    private String profileUserId;
 
     public ProfileViewModel(@NonNull Application application) {
         super(application);
         this.userRepository = new UserRepository();
         this.postRepository = new PostRepository(application);
+        this.currentUserId = FirebaseAuth.getInstance().getUid();
     }
 
-    public void loadUser(String userId) {
+    public void init(String userId) {
+        this.profileUserId = userId;
+        loadUserProfile();
+        loadUserPosts();
+        checkIfFollowing();
+    }
+
+    private void loadUserProfile() {
         _isLoading.setValue(true);
-        user = userRepository.getUser(userId);
-        // isLoading will be handled by observing the user LiveData
+        userRepository.getUser(profileUserId).observeForever(userData -> {
+            _user.setValue(userData);
+            _isLoading.setValue(false);
+        });
     }
 
-    public void followUser(String userId) {
-        userRepository.followUser(userId, new UserRepository.OnDataCallback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                // The user LiveData will be updated automatically by the repository
-            }
+    private void loadUserPosts() {
+        postRepository.getAllPosts().observeForever(allPosts -> {
+            _posts.setValue(allPosts);
+        });
+    }
 
-            @Override
-            public void onFailure(Exception e) {
-                _error.postValue(e.getMessage());
+    private void checkIfFollowing() {
+        if (currentUserId == null || profileUserId.equals(currentUserId)) return;
+        userRepository.getUser(currentUserId).observeForever(currentUser -> {
+            if (currentUser != null && currentUser.getFollowing().contains(profileUserId)) {
+                _isFollowing.setValue(true);
+            } else {
+                _isFollowing.setValue(false);
             }
         });
     }
 
-    public void unfollowUser(String userId) {
-        userRepository.unfollowUser(userId, new UserRepository.OnDataCallback<Void>() {
-            @Override
-            public void onSuccess(Void data) {
-                // The user LiveData will be updated automatically by the repository
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                _error.postValue(e.getMessage());
-            }
-        });
+    public void toggleFollow() {
+        if (currentUserId == null || profileUserId.equals(currentUserId)) return;
+        _isLoading.setValue(true);
+        if (Boolean.TRUE.equals(_isFollowing.getValue())) {
+            userRepository.unfollowUser(profileUserId, new UserRepository.OnDataCallback<Void>() {
+                @Override
+                public void onSuccess(Void data) {
+                    _isFollowing.setValue(false);
+                    _isLoading.setValue(false);
+                }
+                @Override
+                public void onFailure(Exception e) {
+                    _error.setValue(e.getMessage());
+                    _isLoading.setValue(false);
+                }
+            });
+        } else {
+            userRepository.followUser(profileUserId, new UserRepository.OnDataCallback<Void>() {
+                @Override
+                public void onSuccess(Void data) {
+                    _isFollowing.setValue(true);
+                    _isLoading.setValue(false);
+                }
+                @Override
+                public void onFailure(Exception e) {
+                    _error.setValue(e.getMessage());
+                    _isLoading.setValue(false);
+                }
+            });
+        }
     }
 
-    public void toggleLikeStatus(String postId) {
+    public void toggleLike(String postId) {
         postRepository.toggleLikeStatus(postId, new PostRepository.OnPostLikedListener() {
             @Override
-            public void onPostLiked() {
-                // The post will be refreshed in the repository, and UI will update via LiveData.
-            }
-
+            public void onPostLiked() {}
             @Override
             public void onError(Exception e) {
-                _error.postValue(e.getMessage());
+                _error.setValue(e.getMessage());
             }
         });
     }
+
+    public LiveData<User> getUser() { return _user; }
+    public LiveData<List<Post>> getPosts() { return _posts; }
+    public LiveData<Boolean> isFollowing() { return _isFollowing; }
+    public LiveData<String> getError() { return _error; }
+    public LiveData<Boolean> isLoading() { return _isLoading; }
 }

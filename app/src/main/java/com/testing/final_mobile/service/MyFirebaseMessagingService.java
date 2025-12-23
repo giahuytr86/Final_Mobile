@@ -16,7 +16,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.testing.final_mobile.R;
-import com.testing.final_mobile.ui.MainActivity;
+import com.testing.final_mobile.ui.activity.MainActivity;
 
 import java.util.Map;
 
