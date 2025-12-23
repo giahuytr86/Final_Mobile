@@ -17,6 +17,7 @@ import com.testing.final_mobile.R;
 import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.databinding.ItemPostBinding;
 import com.testing.final_mobile.ui.activity.PostDetailActivity;
+import com.testing.final_mobile.ui.activity.ProfileActivity;
 import com.testing.final_mobile.utils.TimestampConverter;
 
 import java.util.Objects;
@@ -87,8 +88,6 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
                     .circleCrop()
                     .into(binding.ivUserAvatar);
 
-            // The logic for showing the post image has been removed.
-
             String currentUserId = FirebaseAuth.getInstance().getUid();
             if (currentUserId != null && post.getLikes().contains(currentUserId)) {
                 binding.ivLikeIcon.setImageResource(R.drawable.ic_heart_filled);
@@ -97,6 +96,15 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
                 binding.ivLikeIcon.setImageResource(R.drawable.ic_heart_outline);
                 binding.ivLikeIcon.setColorFilter(ContextCompat.getColor(itemView.getContext(), R.color.text_gray));
             }
+
+            View.OnClickListener profileClickListener = v -> {
+                Intent intent = new Intent(itemView.getContext(), ProfileActivity.class);
+                intent.putExtra(ProfileActivity.EXTRA_USER_ID, post.getUserId());
+                itemView.getContext().startActivity(intent);
+            };
+
+            binding.ivUserAvatar.setOnClickListener(profileClickListener);
+            binding.tvUserName.setOnClickListener(profileClickListener);
 
             binding.btnLike.setOnClickListener(v -> {
                 if (listener != null) {

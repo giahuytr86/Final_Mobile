@@ -12,13 +12,12 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
-import com.testing.final_mobile.data.model.Conversation;
 import com.testing.final_mobile.databinding.FragmentConversationsBinding;
-import com.testing.final_mobile.ui.activity.ChatActivity; // We will create this activity next
+import com.testing.final_mobile.ui.activity.ChatActivity;
 import com.testing.final_mobile.ui.adapter.ConversationAdapter;
 import com.testing.final_mobile.ui.viewmodel.ConversationViewModel;
 
-public class ConversationFragment extends Fragment implements ConversationAdapter.OnConversationClickListener {
+public class ConversationFragment extends Fragment {
 
     private FragmentConversationsBinding binding;
     private ConversationViewModel viewModel;
@@ -36,30 +35,31 @@ public class ConversationFragment extends Fragment implements ConversationAdapte
         super.onViewCreated(view, savedInstanceState);
 
         viewModel = new ViewModelProvider(this).get(ConversationViewModel.class);
+
         setupRecyclerView();
         observeViewModel();
     }
 
     private void setupRecyclerView() {
-        adapter = new ConversationAdapter(this);
+        adapter = new ConversationAdapter(conversation -> {
+            Intent intent = new Intent(getActivity(), ChatActivity.class);
+            intent.putExtra(ChatActivity.EXTRA_RECEIVER_ID, conversation.getOtherUserId());
+            intent.putExtra(ChatActivity.EXTRA_RECEIVER_NAME, conversation.getOtherUserName());
+            startActivity(intent);
+        });
         binding.rvConversations.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.rvConversations.setAdapter(adapter);
     }
 
     private void observeViewModel() {
         viewModel.getConversations().observe(getViewLifecycleOwner(), conversations -> {
-            if (conversations != null) {
+            if (conversations != null && !conversations.isEmpty()) {
                 adapter.submitList(conversations);
+                binding.rvConversations.setVisibility(View.VISIBLE);
+            } else {
+                binding.rvConversations.setVisibility(View.GONE);
             }
         });
-    }
-
-    @Override
-    public void onConversationClicked(Conversation conversation) {
-        Intent intent = new Intent(getActivity(), ChatActivity.class);
-        intent.putExtra(ChatActivity.EXTRA_CONVERSATION_ID, conversation.getConversationId());
-        intent.putExtra(ChatActivity.EXTRA_OTHER_USER_ID, conversation.getOtherUserId());
-        startActivity(intent);
     }
 
     @Override

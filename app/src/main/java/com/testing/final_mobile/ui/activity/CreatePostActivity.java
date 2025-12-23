@@ -1,10 +1,14 @@
 package com.testing.final_mobile.ui.activity;
 
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
@@ -15,6 +19,17 @@ public class CreatePostActivity extends AppCompatActivity {
 
     private AcitivityCreatePostBinding binding;
     private CreatePostViewModel viewModel;
+    private Uri imageUri;
+
+    private final ActivityResultLauncher<Intent> selectImageLauncher = registerForActivityResult(
+            new ActivityResultContracts.StartActivityForResult(),
+            result -> {
+                if (result.getResultCode() == RESULT_OK && result.getData() != null) {
+                    imageUri = result.getData().getData();
+                    binding.ivImagePreview.setImageURI(imageUri);
+                    binding.ivImagePreview.setVisibility(View.VISIBLE);
+                }
+            });
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -32,11 +47,16 @@ public class CreatePostActivity extends AppCompatActivity {
         binding.btnClose.setOnClickListener(v -> finish());
         binding.btnPost.setOnClickListener(v -> {
             String content = binding.etContent.getText().toString().trim();
-            if (!TextUtils.isEmpty(content)) {
-                viewModel.createPost(content);
+            if (!TextUtils.isEmpty(content) || imageUri != null) {
+                viewModel.createPost(content, imageUri);
             } else {
                 Toast.makeText(this, "Content cannot be empty", Toast.LENGTH_SHORT).show();
             }
+        });
+        binding.btnSelectImage.setOnClickListener(v -> {
+            Intent intent = new Intent(Intent.ACTION_PICK);
+            intent.setType("image/*");
+            selectImageLauncher.launch(intent);
         });
     }
 
