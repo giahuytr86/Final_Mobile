@@ -52,9 +52,11 @@ public class ProfileViewModel extends AndroidViewModel {
     }
 
     private void loadUserPosts() {
-        postRepository.getAllPosts().observeForever(allPosts -> {
-            _posts.setValue(allPosts);
-        });
+        if (profileUserId != null) {
+            postRepository.getPostsByUserId(profileUserId).observeForever(userPosts -> {
+                _posts.setValue(userPosts);
+            });
+        }
     }
 
     private void checkIfFollowing() {
@@ -103,7 +105,10 @@ public class ProfileViewModel extends AndroidViewModel {
     public void toggleLike(String postId) {
         postRepository.toggleLikeStatus(postId, new PostRepository.OnPostLikedListener() {
             @Override
-            public void onPostLiked() {}
+            public void onPostLiked() {
+                // Handled by LiveData
+            }
+
             @Override
             public void onError(Exception e) {
                 _error.setValue(e.getMessage());

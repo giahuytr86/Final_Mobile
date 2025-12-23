@@ -21,6 +21,10 @@ public interface PostDao {
     @Query("SELECT * FROM posts WHERE id = :postId")
     LiveData<Post> getPostById(String postId);
 
+    // Returns LiveData for posts by a specific user.
+    @Query("SELECT * FROM posts WHERE userId = :userId ORDER BY timestamp DESC")
+    LiveData<List<Post>> getPostsByUserId(String userId);
+
     // Inserts a list of posts. If a post already exists, it will be replaced.
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertAll(List<Post> posts);

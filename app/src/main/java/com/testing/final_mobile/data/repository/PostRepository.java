@@ -167,6 +167,11 @@ public class PostRepository {
         return postDao.getPostById(postId);
     }
 
+    public LiveData<List<Post>> getPostsByUserId(String userId) {
+        refreshUserPostsFromServer(userId); // Optional: refresh data from remote
+        return postDao.getPostsByUserId(userId);
+    }
+
     private void refreshPostsFromServer() {
         if (!isNetworkAvailable()) return;
 
@@ -195,6 +200,21 @@ public class PostRepository {
             @Override
             public void onError(Exception e) {
                 Log.e(TAG, "Error refreshing post " + postId + " from server", e);
+            }
+        });
+    }
+
+    private void refreshUserPostsFromServer(String userId) {
+        if (!isNetworkAvailable()) return;
+        remoteDataSource.fetchPostsByUserId(userId, new PostRemoteDataSource.OnPostsFetchedListener() {
+            @Override
+            public void onPostsFetched(List<Post> posts) {
+                AppDatabase.databaseWriteExecutor.execute(() -> postDao.insertAll(posts));
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Error refreshing user posts from server", e);
             }
         });
     }

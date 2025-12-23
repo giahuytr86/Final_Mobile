@@ -181,4 +181,27 @@ public class PostRemoteDataSource {
             }
         });
     }
+
+    public void fetchPostsByUserId(String userId, OnPostsFetchedListener listener) {
+        Query query = firestoreService.getCollection(POST_COLLECTION)
+                .whereEqualTo("userId", userId)
+                .orderBy("timestamp", Query.Direction.DESCENDING);
+
+        firestoreService.getCollection(query, task -> {
+            if (task.isSuccessful() && task.getResult() != null) {
+                List<Post> posts = new ArrayList<>();
+                for (QueryDocumentSnapshot document : task.getResult()) {
+                    Post post = document.toObject(Post.class);
+                    post.setId(document.getId());
+                    posts.add(post);
+                }
+                listener.onPostsFetched(posts);
+            } else {
+                Log.e(TAG, "Error fetching user posts", task.getException());
+                if (task.getException() != null) {
+                    listener.onError(task.getException());
+                }
+            }
+        });
+    }
 }
