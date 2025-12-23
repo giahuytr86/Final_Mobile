@@ -28,6 +28,12 @@ public interface CommentDao {
     void insertAll(List<Comment> comments);
 
     /**
+     * Deletes all comments for a specific post.
+     */
+    @Query("DELETE FROM comments WHERE postId = :postId")
+    void deleteCommentsForPost(String postId);
+
+    /**
      * Deletes all comments from the table. Used for cache invalidation if needed.
      */
     @Query("DELETE FROM comments")

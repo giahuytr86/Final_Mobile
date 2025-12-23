@@ -10,6 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.testing.final_mobile.databinding.ActivityChatBinding;
 import com.testing.final_mobile.ui.adapter.ChatMessageAdapter;
 import com.testing.final_mobile.ui.viewmodel.MessageViewModel;
+import com.testing.final_mobile.ui.viewmodel.MessageViewModelFactory;
 
 public class ChatActivity extends AppCompatActivity {
 
@@ -36,8 +37,9 @@ public class ChatActivity extends AppCompatActivity {
             return;
         }
 
-        viewModel = new ViewModelProvider(this).get(MessageViewModel.class);
-        viewModel.init(receiverId);
+        // Use the factory to create the ViewModel
+        MessageViewModelFactory factory = new MessageViewModelFactory(getApplication(), receiverId);
+        viewModel = new ViewModelProvider(this, factory).get(MessageViewModel.class);
 
         setupToolbar(receiverName);
         setupRecyclerView();
@@ -63,7 +65,6 @@ public class ChatActivity extends AppCompatActivity {
     private void observeViewModel() {
         viewModel.getMessages().observe(this, messages -> {
             adapter.submitList(messages, () -> {
-                // Scroll to the bottom to show the latest message
                 if (adapter.getItemCount() > 0) {
                     binding.rvMessages.smoothScrollToPosition(adapter.getItemCount() - 1);
                 }
@@ -85,8 +86,11 @@ public class ChatActivity extends AppCompatActivity {
 
     private void setupSendButton() {
         binding.btnSend.setOnClickListener(v -> {
-            String messageText = binding.etMessage.getText().toString();
-            viewModel.sendMessage(messageText, receiverId);
+            String messageText = binding.etMessage.getText().toString().trim();
+            // Check for empty message before sending
+            if (!messageText.isEmpty()) {
+                viewModel.sendMessage(messageText, receiverId);
+            }
         });
     }
 }

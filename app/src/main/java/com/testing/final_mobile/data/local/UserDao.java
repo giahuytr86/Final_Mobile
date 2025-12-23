@@ -8,16 +8,18 @@ import androidx.room.Query;
 
 import com.testing.final_mobile.data.model.User;
 
-import java.util.List;
-
 @Dao
 public interface UserDao {
 
-    @Query("SELECT * FROM users WHERE uid = :uid")
-    LiveData<User> getUserById(String uid);
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    void insertAll(List<User> users);
+    void insert(User user);
 
-    // You can add more specific queries here in the future if needed
+    // Get a user by their ID and observe changes.
+    @Query("SELECT * FROM users WHERE uid = :userId")
+    LiveData<User> getUserById(String userId);
+
+    // Used for updating user data in the background.
+    @Query("SELECT * FROM users WHERE uid = :userId")
+    User getUser(String userId);
+
 }

@@ -1,35 +1,21 @@
 package com.testing.final_mobile.data.remote;
 
-import android.util.Log;
-
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.Query;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
-import com.google.firebase.firestore.Transaction;
 import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.data.remote.core.FirestoreService;
 
-import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class PostRemoteDataSource {
 
-    private static final String TAG = "PostRemoteDataSource";
-    private static final String POST_COLLECTION = "posts";
-
     private final FirestoreService firestoreService;
 
-    //<editor-fold desc="Interfaces">
     public interface OnPostsFetchedListener {
         void onPostsFetched(List<Post> posts);
-        void onError(Exception e);
-    }
-
-    public interface OnPostsSearchedListener {
-        void onPostsSearched(List<Post> posts);
         void onError(Exception e);
     }
 
@@ -47,137 +33,124 @@ public class PostRemoteDataSource {
         void onPostLikeUpdated();
         void onError(Exception e);
     }
-    //</editor-fold>
+
+    public interface OnPostsSearchedListener {
+        void onPostsSearched(List<Post> posts);
+        void onError(Exception e);
+    }
 
     public PostRemoteDataSource(FirestoreService firestoreService) {
         this.firestoreService = firestoreService;
     }
 
-    public DocumentReference getNewPostReference() {
-        return firestoreService.getCollection(POST_COLLECTION).document();
-    }
-
-    public void searchPosts(String searchTerm, OnPostsSearchedListener listener) {
-        if (searchTerm == null || searchTerm.trim().isEmpty()) {
-            listener.onPostsSearched(new ArrayList<>());
-            return;
-        }
-
-        String lowercasedTerm = searchTerm.toLowerCase();
-
-        Query query = firestoreService.getCollection(POST_COLLECTION)
-                .orderBy("searchableContent")
-                .startAt(lowercasedTerm)
-                .endAt(lowercasedTerm + '\uf8ff')
-                .limit(20);
-
-        firestoreService.getCollection(query, task -> {
-            if (task.isSuccessful() && task.getResult() != null) {
-                List<Post> posts = new ArrayList<>();
-                for (QueryDocumentSnapshot doc : task.getResult()) {
-                    Post post = doc.toObject(Post.class);
-                    post.setId(doc.getId()); // Corrected method name
-                    posts.add(post);
-                }
-                listener.onPostsSearched(posts);
-            } else {
-                Log.e(TAG, "Error searching posts", task.getException());
-                if (task.getException() != null) {
-                    listener.onError(task.getException());
-                }
-            }
-        });
-    }
-
-    public void toggleLikeStatus(String postId, String userId, OnPostLikeUpdatedListener listener) {
-        DocumentReference postRef = firestoreService.getDocument(POST_COLLECTION, postId);
-
-        Transaction.Function<Void> updateFunction = transaction -> {
-            Post post = transaction.get(postRef).toObject(Post.class);
-            if (post == null) {
-                throw new FirebaseFirestoreException("Post not found", FirebaseFirestoreException.Code.NOT_FOUND);
-            }
-
-            List<String> likes = post.getLikes(); // Correct type
-            if (likes.contains(userId)) {
-                likes.remove(userId);
-            } else {
-                likes.add(userId);
-            }
-            // The like count is now derived, so we only update the list.
-            transaction.update(postRef, "likes", likes);
-            return null;
-        };
-
-        firestoreService.runTransaction(updateFunction, (OnCompleteListener<Void>) task -> {
+    public void createPost(Post post, OnPostCreatedListener listener) {
+        firestoreService.addDocument("posts", post, task -> {
             if (task.isSuccessful()) {
-                listener.onPostLikeUpdated();
+                listener.onPostCreated(task.getResult());
             } else {
-                Log.e(TAG, "Like transaction failed", task.getException());
-                if (task.getException() != null) {
-                    listener.onError(task.getException());
-                }
-            }
-        });
-    }
-
-    public void createPost(Post newPost, OnPostCreatedListener listener) {
-        // Use the specific document reference to ensure the ID is what we set in the repository
-        firestoreService.getDocument(POST_COLLECTION, newPost.getId()).set(newPost).addOnCompleteListener(task -> {
-            if (task.isSuccessful()) {
-                // The result of a set operation is void, so we pass the reference we already have.
-                listener.onPostCreated(firestoreService.getDocument(POST_COLLECTION, newPost.getId()));
-            } else {
-                Log.e(TAG, "Error creating post", task.getException());
-                if (task.getException() != null) {
-                    listener.onError(task.getException());
-                }
+                listener.onError(task.getException());
             }
         });
     }
 
     public void fetchAllPosts(OnPostsFetchedListener listener) {
-        Query query = firestoreService.getCollection(POST_COLLECTION)
-                .orderBy("timestamp", Query.Direction.DESCENDING);
-
+        Query query = firestoreService.getCollection("posts")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .limit(50);
         firestoreService.getCollection(query, task -> {
-            if (task.isSuccessful()) {
-                List<Post> postList = new ArrayList<>();
-                QuerySnapshot snapshots = task.getResult();
-                if (snapshots != null) {
-                    for (QueryDocumentSnapshot doc : snapshots) {
-                        Post post = doc.toObject(Post.class);
-                        post.setId(doc.getId()); // Corrected method name
-                        postList.add(post);
-                    }
+            if (task.isSuccessful() && task.getResult() != null) {
+                try {
+                    List<Post> posts = task.getResult().toObjects(Post.class);
+                    listener.onPostsFetched(posts);
+                } catch (Exception e) {
+                    listener.onError(e);
                 }
-                listener.onPostsFetched(postList);
             } else {
-                Log.e(TAG, "Error fetching posts from server", task.getException());
-                if (task.getException() != null) {
-                    listener.onError(task.getException());
+                listener.onError(task.getException());
+            }
+        });
+    }
+
+    public void getPostsForUser(String userId, OnPostsFetchedListener listener) {
+        if (userId == null) {
+            listener.onPostsFetched(Collections.emptyList());
+            return;
+        }
+        Query query = firestoreService.getCollection("posts")
+                .whereEqualTo("userId", userId)
+                .orderBy("timestamp", Query.Direction.DESCENDING);
+        firestoreService.getCollection(query, task -> {
+            if (task.isSuccessful() && task.getResult() != null) {
+                try {
+                    List<Post> posts = task.getResult().toObjects(Post.class);
+                    listener.onPostsFetched(posts);
+                } catch (Exception e) {
+                    listener.onError(e);
                 }
+            } else {
+                listener.onError(task.getException());
             }
         });
     }
 
     public void fetchPostById(String postId, OnPostFetchedListener listener) {
-        firestoreService.getDocument(firestoreService.getDocument(POST_COLLECTION, postId), task -> {
-            if (task.isSuccessful()) {
-                if (task.getResult() != null && task.getResult().exists()) {
+        DocumentReference docRef = firestoreService.getDocument("posts", postId);
+        firestoreService.getDocument(docRef, task -> {
+            if (task.isSuccessful() && task.getResult() != null) {
+                try {
                     Post post = task.getResult().toObject(Post.class);
-                    if (post != null) {
-                        post.setId(task.getResult().getId()); // Corrected method name
-                        listener.onPostFetched(post);
-                    }
-                } else {
-                    listener.onError(new Exception("Post not found"));
+                    listener.onPostFetched(post);
+                } catch (Exception e) {
+                    listener.onError(e);
                 }
             } else {
-                Log.e(TAG, "Error fetching post " + postId + " from server", task.getException());
-                if (task.getException() != null) {
-                    listener.onError(task.getException());
+                listener.onError(task.getException());
+            }
+        });
+    }
+
+    public void toggleLikeStatus(String postId, String userId, OnPostLikeUpdatedListener listener) {
+        DocumentReference postRef = firestoreService.getDocument("posts", postId);
+        firestoreService.runTransaction(transaction -> {
+            DocumentSnapshot snapshot = transaction.get(postRef);
+            Post post = snapshot.toObject(Post.class);
+            if (post != null) {
+                List<String> likes = post.getLikes();
+                if (likes != null && likes.contains(userId)) {
+                    transaction.update(postRef, "likes", FieldValue.arrayRemove(userId));
+                } else {
+                    transaction.update(postRef, "likes", FieldValue.arrayUnion(userId));
                 }
+            }
+            return null;
+        }, task -> {
+            if (task.isSuccessful()) {
+                listener.onPostLikeUpdated();
+            } else {
+                listener.onError(task.getException());
+            }
+        });
+    }
+
+    public void searchPosts(String searchTerm, OnPostsSearchedListener listener) {
+        if (searchTerm == null || searchTerm.trim().isEmpty()) {
+            listener.onPostsSearched(Collections.emptyList());
+            return;
+        }
+        String lowercasedTerm = searchTerm.toLowerCase();
+        Query query = firestoreService.getCollection("posts")
+                .whereGreaterThanOrEqualTo("searchableContent", lowercasedTerm)
+                .whereLessThanOrEqualTo("searchableContent", lowercasedTerm + '\uf8ff');
+        firestoreService.getCollection(query, task -> {
+            if (task.isSuccessful() && task.getResult() != null) {
+                try {
+                    List<Post> posts = task.getResult().toObjects(Post.class);
+                    listener.onPostsSearched(posts);
+                } catch (Exception e) {
+                    listener.onError(e);
+                }
+            } else {
+                listener.onError(task.getException());
             }
         });
     }

@@ -9,7 +9,6 @@ import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.lifecycle.LiveData;
-import androidx.lifecycle.MutableLiveData;
 
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
@@ -23,7 +22,6 @@ import com.testing.final_mobile.data.remote.PostRemoteDataSource;
 import com.testing.final_mobile.data.remote.core.FirestoreService;
 import com.testing.final_mobile.data.remote.core.StorageService;
 
-import java.util.Collections;
 import java.util.List;
 
 public class PostRepository {
@@ -34,8 +32,8 @@ public class PostRepository {
     private final PostRemoteDataSource remoteDataSource;
     private final StorageService storageService;
     private final Application application;
-    private final FirebaseFirestore firestore;
     private final FirebaseAuth auth;
+    private final FirebaseFirestore firestore;
 
     public interface OnPostCreatedListener {
         void onPostCreated();
@@ -47,25 +45,25 @@ public class PostRepository {
         void onError(Exception e);
     }
 
+    public interface OnPostsSearchedListener {
+        void onPostsSearched(List<Post> posts);
+        void onError(Exception e);
+    }
+
     public PostRepository(Application application) {
         AppDatabase database = AppDatabase.getDatabase(application);
         this.postDao = database.postDao();
         this.remoteDataSource = new PostRemoteDataSource(new FirestoreService());
-        this.storageService = new StorageService(); // Initialize StorageService
+        this.storageService = new StorageService();
         this.application = application;
-        this.firestore = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
+        this.firestore = FirebaseFirestore.getInstance();
     }
 
     public void createPost(String content, @Nullable Uri imageUri, OnPostCreatedListener listener) {
-        if (!isNetworkAvailable()) {
-            listener.onError(new Exception("No internet connection"));
-            return;
-        }
-
         FirebaseUser currentUser = auth.getCurrentUser();
         if (currentUser == null) {
-            listener.onError(new Exception("User not logged in"));
+            listener.onError(new Exception("User not logged in."));
             return;
         }
 
@@ -90,29 +88,42 @@ public class PostRepository {
         firestore.collection("users").document(currentUser.getUid()).get()
                 .addOnSuccessListener(documentSnapshot -> {
                     User user = documentSnapshot.toObject(User.class);
-                    String username = (user != null && user.getUsername() != null) ? user.getUsername() : currentUser.getEmail();
-                    String avatarUrl = (user != null) ? user.getAvatarUrl() : null;
-                    createPostInFirestore(content, imageUrl, currentUser.getUid(), username, avatarUrl, listener);
+                    if (user != null) {
+                        createPostInFirestore(content, imageUrl, user, listener);
+                    } else {
+                        listener.onError(new Exception("Could not retrieve user details to create post. User document not found in Firestore."));
+                    }
                 })
                 .addOnFailureListener(listener::onError);
     }
 
-    private void createPostInFirestore(String content, @Nullable String imageUrl, String userId, String username, String avatarUrl, OnPostCreatedListener listener) {
-        DocumentReference newPostRef = remoteDataSource.getNewPostReference();
-
+    private void createPostInFirestore(String content, @Nullable String imageUrl, User user, OnPostCreatedListener listener) {
         Post newPost = new Post();
-        newPost.setId(newPostRef.getId());
-        newPost.setUserId(userId);
-        newPost.setUsername(username);
-        newPost.setAvatarUrl(avatarUrl);
+        newPost.setUserId(user.getUid());
+        newPost.setUsername(user.getUsername());
+        newPost.setAvatarUrl(user.getAvatarUrl());
         newPost.setContent(content);
         newPost.setImageUrl(imageUrl);
 
         remoteDataSource.createPost(newPost, new PostRemoteDataSource.OnPostCreatedListener() {
             @Override
             public void onPostCreated(DocumentReference documentReference) {
-                refreshPostFromServer(documentReference.getId());
-                listener.onPostCreated();
+                documentReference.get().addOnSuccessListener(snapshot -> {
+                    if (snapshot.exists()) {
+                        Post createdPost = snapshot.toObject(Post.class);
+                        if (createdPost != null) {
+                            AppDatabase.databaseWriteExecutor.execute(() -> postDao.insert(createdPost));
+                            listener.onPostCreated();
+                        } else {
+                            listener.onError(new Exception("Failed to parse created post from server."));
+                        }
+                    } else {
+                        listener.onError(new Exception("Failed to fetch post back from server after creation."));
+                    }
+                }).addOnFailureListener(e -> {
+                    Log.e(TAG, "Post was created, but failed to fetch it back. A full refresh will fix it later.", e);
+                    listener.onPostCreated();
+                });
             }
 
             @Override
@@ -122,32 +133,31 @@ public class PostRepository {
         });
     }
 
-    public void searchPosts(String searchTerm, MutableLiveData<List<Post>> searchResults, MutableLiveData<String> error) {
+    public void searchPosts(String searchTerm, OnPostsSearchedListener listener) {
         remoteDataSource.searchPosts(searchTerm, new PostRemoteDataSource.OnPostsSearchedListener() {
             @Override
             public void onPostsSearched(List<Post> posts) {
-                searchResults.postValue(posts);
+                listener.onPostsSearched(posts);
             }
 
             @Override
             public void onError(Exception e) {
-                error.postValue(e.getMessage());
+                listener.onError(e);
             }
         });
     }
 
     public void toggleLikeStatus(String postId, OnPostLikedListener listener) {
-        String currentUserId = auth.getUid();
-        if (currentUserId == null || !isNetworkAvailable()) {
-            listener.onError(new Exception("Not logged in or no network"));
+        FirebaseUser currentUser = auth.getCurrentUser();
+        if (currentUser == null) {
+            listener.onError(new Exception("User not logged in"));
             return;
         }
-
-        remoteDataSource.toggleLikeStatus(postId, currentUserId, new PostRemoteDataSource.OnPostLikeUpdatedListener() {
+        remoteDataSource.toggleLikeStatus(postId, currentUser.getUid(), new PostRemoteDataSource.OnPostLikeUpdatedListener() {
             @Override
             public void onPostLikeUpdated() {
-                refreshPostFromServer(postId);
                 listener.onPostLiked();
+                refreshPostFromServer(postId);
             }
 
             @Override
@@ -158,19 +168,41 @@ public class PostRepository {
     }
 
     public LiveData<List<Post>> getAllPosts() {
-        refreshPostsFromServer();
+        // The ViewModel should be responsible for refreshing data.
+        // Removing automatic refresh to prevent race conditions and data loss.
         return postDao.getAllPosts();
     }
 
+    public LiveData<List<Post>> getPostsForUser(String userId) {
+        // The ViewModel should be responsible for refreshing data.
+        return postDao.getPostsForUser(userId);
+    }
+
     public LiveData<Post> getPostById(String postId) {
-        refreshPostFromServer(postId);
+        // The ViewModel should be responsible for refreshing data.
         return postDao.getPostById(postId);
     }
 
-    private void refreshPostsFromServer() {
+    public void refreshPostsFromServer() {
         if (!isNetworkAvailable()) return;
-
         remoteDataSource.fetchAllPosts(new PostRemoteDataSource.OnPostsFetchedListener() {
+            @Override
+            public void onPostsFetched(List<Post> posts) {
+                AppDatabase.databaseWriteExecutor.execute(() -> {
+                    postDao.deleteAllAndInsertAll(posts);
+                });
+            }
+
+            @Override
+            public void onError(Exception e) {
+                Log.e(TAG, "Error fetching all posts from server", e);
+            }
+        });
+    }
+
+    public void refreshPostsForUserFromServer(String userId) {
+        if (!isNetworkAvailable()) return;
+        remoteDataSource.getPostsForUser(userId, new PostRemoteDataSource.OnPostsFetchedListener() {
             @Override
             public void onPostsFetched(List<Post> posts) {
                 AppDatabase.databaseWriteExecutor.execute(() -> postDao.insertAll(posts));
@@ -178,31 +210,34 @@ public class PostRepository {
 
             @Override
             public void onError(Exception e) {
-                Log.e(TAG, "Error refreshing posts from server", e);
+                Log.e(TAG, "Error fetching posts for user " + userId, e);
             }
         });
     }
 
-    private void refreshPostFromServer(String postId) {
+    public void refreshPostFromServer(String postId) {
         if (!isNetworkAvailable()) return;
-
         remoteDataSource.fetchPostById(postId, new PostRemoteDataSource.OnPostFetchedListener() {
             @Override
             public void onPostFetched(Post post) {
-                AppDatabase.databaseWriteExecutor.execute(() -> postDao.insertAll(Collections.singletonList(post)));
+                if (post != null) {
+                    AppDatabase.databaseWriteExecutor.execute(() -> postDao.insert(post));
+                }
             }
 
             @Override
             public void onError(Exception e) {
-                Log.e(TAG, "Error refreshing post " + postId + " from server", e);
+                Log.e(TAG, "Error fetching post " + postId + " from server", e);
             }
         });
     }
 
     private boolean isNetworkAvailable() {
-        ConnectivityManager cm = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
-        if (cm == null) return false;
-        NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-        return activeNetwork != null && activeNetwork.isConnectedOrConnecting();
+        ConnectivityManager connectivityManager = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
+        if (connectivityManager != null) {
+            NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+            return activeNetworkInfo != null && activeNetworkInfo.isConnected();
+        }
+        return false;
     }
 }

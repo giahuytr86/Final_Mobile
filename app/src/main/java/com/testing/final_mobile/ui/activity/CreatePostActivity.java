@@ -12,12 +12,12 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 
-import com.testing.final_mobile.databinding.AcitivityCreatePostBinding; // Corrected filename
+import com.testing.final_mobile.databinding.ActivityCreatePostBinding;
 import com.testing.final_mobile.ui.viewmodel.CreatePostViewModel;
 
 public class CreatePostActivity extends AppCompatActivity {
 
-    private AcitivityCreatePostBinding binding;
+    private ActivityCreatePostBinding binding;
     private CreatePostViewModel viewModel;
     private Uri imageUri;
 
@@ -34,7 +34,7 @@ public class CreatePostActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        binding = AcitivityCreatePostBinding.inflate(getLayoutInflater());
+        binding = ActivityCreatePostBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
         viewModel = new ViewModelProvider(this).get(CreatePostViewModel.class);
@@ -63,14 +63,13 @@ public class CreatePostActivity extends AppCompatActivity {
     private void observeViewModel() {
         viewModel.isLoading.observe(this, isLoading -> {
             binding.btnPost.setEnabled(!isLoading);
-            // You might want to add a ProgressBar to the layout and control it here
+            binding.progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
         });
 
-        viewModel.postCreated.observe(this, isSuccess -> {
-            if (isSuccess) {
-                Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show();
-                finish();
-            }
+        // Observe the SingleLiveEvent for post creation
+        viewModel.getPostCreatedEvent().observe(this, aVoid -> {
+            Toast.makeText(this, "Post created successfully!", Toast.LENGTH_SHORT).show();
+            finish(); // Finish the activity upon successful creation
         });
 
         viewModel.error.observe(this, error -> {

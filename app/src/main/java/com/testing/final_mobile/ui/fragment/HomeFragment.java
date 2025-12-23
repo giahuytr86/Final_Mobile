@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -19,6 +20,8 @@ import com.testing.final_mobile.R;
 import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.databinding.FragmentHomeBinding;
 import com.testing.final_mobile.ui.activity.CreatePostActivity;
+import com.testing.final_mobile.ui.activity.PostDetailActivity;
+import com.testing.final_mobile.ui.activity.ProfileActivity;
 import com.testing.final_mobile.ui.adapter.PostAdapter;
 import com.testing.final_mobile.ui.viewmodel.HomeViewModel;
 
@@ -58,8 +61,6 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
             Intent intent = new Intent(getActivity(), CreatePostActivity.class);
             startActivity(intent);
         });
-
-        // TODO: Add listener for messages button
     }
 
     private void observeViewModel() {
@@ -70,7 +71,9 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
         });
 
         viewModel.error.observe(getViewLifecycleOwner(), error -> {
-            // Handle error display
+            if (error != null && !error.isEmpty()){
+                Toast.makeText(getContext(), "Error: "+error, Toast.LENGTH_LONG).show();
+            }
         });
     }
 
@@ -85,8 +88,44 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
         }
     }
 
+    // --- Implementation of OnPostInteractionListener ---
+
+    @Override
+    public void onProfileClicked(String userId) {
+        Intent intent = new Intent(getActivity(), ProfileActivity.class);
+        intent.putExtra(ProfileActivity.EXTRA_USER_ID, userId);
+        startActivity(intent);
+    }
+
+    @Override
+    public void onPostClicked(String postId) {
+        Intent intent = new Intent(getActivity(), PostDetailActivity.class);
+        intent.putExtra(PostDetailActivity.EXTRA_POST_ID, postId);
+        startActivity(intent);
+    }
+
     @Override
     public void onLikeClicked(String postId) {
         viewModel.toggleLikeStatus(postId);
+    }
+
+    @Override
+    public void onCommentClicked(String postId) {
+        Intent intent = new Intent(getActivity(), PostDetailActivity.class);
+        intent.putExtra(PostDetailActivity.EXTRA_POST_ID, postId);
+        startActivity(intent);
+    }
+
+    @Override
+    public void onShareClicked(Post post) {
+        Intent shareIntent = new Intent(Intent.ACTION_SEND);
+        shareIntent.setType("text/plain");
+        shareIntent.putExtra(Intent.EXTRA_TEXT, post.getContent());
+        startActivity(Intent.createChooser(shareIntent, "Share post via"));
+    }
+
+    @Override
+    public void onMoreClicked(Post post) {
+        Toast.makeText(getContext(), "More options coming soon!", Toast.LENGTH_SHORT).show();
     }
 }

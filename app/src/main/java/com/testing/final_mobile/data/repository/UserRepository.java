@@ -1,11 +1,15 @@
 package com.testing.final_mobile.data.repository;
 
+import android.app.Application;
 import android.net.Uri;
+import android.util.Log;
 
 import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.google.firebase.auth.FirebaseAuth;
+import com.testing.final_mobile.data.local.AppDatabase;
+import com.testing.final_mobile.data.local.UserDao;
 import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.data.remote.UserRemoteDataSource;
 
@@ -13,17 +17,19 @@ import java.util.List;
 
 public class UserRepository {
 
+    private static final String TAG = "UserRepository";
     private final UserRemoteDataSource remoteDataSource;
+    private final UserDao userDao;
     private final FirebaseAuth auth;
 
-    //<editor-fold desc="Interfaces and Callbacks">
     public interface OnDataCallback<T> {
         void onSuccess(T data);
         void onFailure(Exception e);
     }
-    //</editor-fold>
 
-    public UserRepository() {
+    public UserRepository(Application application) {
+        AppDatabase database = AppDatabase.getDatabase(application);
+        this.userDao = database.userDao();
         this.remoteDataSource = new UserRemoteDataSource();
         this.auth = FirebaseAuth.getInstance();
     }
@@ -45,25 +51,49 @@ public class UserRepository {
     private String getCurrentUserId() {
         if (auth.getCurrentUser() != null) {
             return auth.getCurrentUser().getUid();
-        } else {
-            return null;
         }
+        return null;
     }
 
     public LiveData<User> getUser(String userId) {
-        MutableLiveData<User> userLiveData = new MutableLiveData<>();
+        refreshUser(userId); // Attempt to refresh data from remote
+        return userDao.getUserById(userId); // Return LiveData from local DB
+    }
+
+    public void refreshUser(String userId) {
+        if (userId == null) return;
         remoteDataSource.getUser(userId, new UserRemoteDataSource.UserCallback<User>() {
             @Override
             public void onSuccess(User result) {
-                userLiveData.postValue(result);
+                if (result != null) {
+                    AppDatabase.databaseWriteExecutor.execute(() -> userDao.insert(result));
+                } else {
+                    // This case is also an error - user not found in remote
+                    Log.w(TAG, "User " + userId + " not found in Firestore.");
+                }
             }
 
             @Override
             public void onError(Exception e) {
-                // In a real app, you might want to post an error state to the LiveData
+                // CRITICAL FIX: Log the error that was being swallowed
+                Log.e(TAG, "Error fetching user " + userId + " from remote.", e);
             }
         });
-        return userLiveData;
+    }
+
+    public void updateUserAvatar(String userId, String avatarUrl, OnDataCallback<Void> callback) {
+        remoteDataSource.updateUserAvatar(userId, avatarUrl, new UserRemoteDataSource.UserCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                refreshUser(userId); // Refresh after update
+                callback.onSuccess(result);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                callback.onFailure(e);
+            }
+        });
     }
 
     public void updateUserProfile(String username, String bio, OnDataCallback<Void> callback) {
@@ -75,6 +105,7 @@ public class UserRepository {
         remoteDataSource.updateUserProfile(userId, username, bio, new UserRemoteDataSource.UserCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
+                refreshUser(userId); // Refresh after update
                 callback.onSuccess(result);
             }
 
@@ -104,20 +135,6 @@ public class UserRepository {
         });
     }
 
-    public void changePassword(String newPassword, OnDataCallback<Void> callback) {
-        remoteDataSource.changePassword(newPassword, new UserRemoteDataSource.UserCallback<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                callback.onSuccess(result);
-            }
-
-            @Override
-            public void onError(Exception e) {
-                callback.onFailure(e);
-            }
-        });
-    }
-
     public void followUser(String targetUserId, OnDataCallback<Void> callback) {
         String currentUserId = getCurrentUserId();
         if (currentUserId == null) {
@@ -127,6 +144,8 @@ public class UserRepository {
         remoteDataSource.followUser(currentUserId, targetUserId, new UserRemoteDataSource.UserCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
+                refreshUser(currentUserId); // Refresh both users to update follower/following lists
+                refreshUser(targetUserId);
                 callback.onSuccess(result);
             }
 
@@ -146,7 +165,23 @@ public class UserRepository {
         remoteDataSource.unfollowUser(currentUserId, targetUserId, new UserRemoteDataSource.UserCallback<Void>() {
             @Override
             public void onSuccess(Void result) {
+                refreshUser(currentUserId);
+                refreshUser(targetUserId);
                 callback.onSuccess(result);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                callback.onFailure(e);
+            }
+        });
+    }
+
+    public void changePassword(String newPassword, OnDataCallback<Void> callback) {
+        remoteDataSource.changePassword(newPassword, new UserRemoteDataSource.UserCallback<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                callback.onSuccess(data);
             }
 
             @Override

@@ -1,6 +1,7 @@
 package com.testing.final_mobile.ui.viewmodel;
 
 import android.app.Application;
+import android.net.Uri;
 
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
@@ -22,92 +23,132 @@ public class ProfileViewModel extends AndroidViewModel {
     private final PostRepository postRepository;
     private final String currentUserId;
 
-    private final MutableLiveData<User> _user = new MutableLiveData<>();
-    private final MutableLiveData<List<Post>> _posts = new MutableLiveData<>();
-    private final MutableLiveData<Boolean> _isFollowing = new MutableLiveData<>();
+    private final MediatorLiveData<User> _user = new MediatorLiveData<>();
+    private final MediatorLiveData<List<Post>> _posts = new MediatorLiveData<>();
+    private final MediatorLiveData<Boolean> _isFollowing = new MediatorLiveData<>();
     private final MutableLiveData<Boolean> _isLoading = new MutableLiveData<>(false);
     private final MutableLiveData<String> _error = new MutableLiveData<>();
 
     private String profileUserId;
 
+    // Keep a reference to the sources to remove them later
+    private LiveData<User> userSource;
+    private LiveData<List<Post>> postsSource;
+    private LiveData<User> followingCheckSource;
+
     public ProfileViewModel(@NonNull Application application) {
         super(application);
-        this.userRepository = new UserRepository();
+        this.userRepository = new UserRepository(application);
         this.postRepository = new PostRepository(application);
         this.currentUserId = FirebaseAuth.getInstance().getUid();
     }
 
     public void init(String userId) {
+        if (userId == null || userId.equals(profileUserId)) {
+            return; // Don't re-initialize for the same user
+        }
         this.profileUserId = userId;
-        loadUserProfile();
-        loadUserPosts();
-        checkIfFollowing();
-    }
 
-    private void loadUserProfile() {
         _isLoading.setValue(true);
-        userRepository.getUser(profileUserId).observeForever(userData -> {
-            _user.setValue(userData);
-            _isLoading.setValue(false);
-        });
-    }
 
-    private void loadUserPosts() {
-        postRepository.getAllPosts().observeForever(allPosts -> {
-            _posts.setValue(allPosts);
-        });
-    }
+        // --- Clean up old sources ---
+        if (userSource != null) _user.removeSource(userSource);
+        if (postsSource != null) _posts.removeSource(postsSource);
+        if (followingCheckSource != null) _isFollowing.removeSource(followingCheckSource);
 
-    private void checkIfFollowing() {
-        if (currentUserId == null || profileUserId.equals(currentUserId)) return;
-        userRepository.getUser(currentUserId).observeForever(currentUser -> {
-            if (currentUser != null && currentUser.getFollowing().contains(profileUserId)) {
-                _isFollowing.setValue(true);
-            } else {
-                _isFollowing.setValue(false);
+        // --- Set up new sources ---
+        userSource = userRepository.getUser(profileUserId);
+        postsSource = postRepository.getPostsForUser(profileUserId);
+
+        // 1. Observe User Data
+        _user.addSource(userSource, user -> {
+            _user.setValue(user);
+            _isLoading.setValue(false); // Stop loading once user data arrives
+            if (user == null) {
+                _error.setValue("Failed to load user profile.");
             }
         });
-    }
 
-    public void toggleFollow() {
-        if (currentUserId == null || profileUserId.equals(currentUserId)) return;
-        _isLoading.setValue(true);
-        if (Boolean.TRUE.equals(_isFollowing.getValue())) {
-            userRepository.unfollowUser(profileUserId, new UserRepository.OnDataCallback<Void>() {
-                @Override
-                public void onSuccess(Void data) {
+        // 2. Observe Posts Data
+        _posts.addSource(postsSource, posts -> _posts.setValue(posts));
+
+        // 3. Observe Following Status
+        if (currentUserId != null && !currentUserId.equals(profileUserId)) {
+            followingCheckSource = userRepository.getUser(currentUserId);
+            _isFollowing.addSource(followingCheckSource, currentUser -> {
+                if (currentUser != null && currentUser.getFollowing() != null) {
+                    _isFollowing.setValue(currentUser.getFollowing().contains(profileUserId));
+                } else {
                     _isFollowing.setValue(false);
-                    _isLoading.setValue(false);
-                }
-                @Override
-                public void onFailure(Exception e) {
-                    _error.setValue(e.getMessage());
-                    _isLoading.setValue(false);
-                }
-            });
-        } else {
-            userRepository.followUser(profileUserId, new UserRepository.OnDataCallback<Void>() {
-                @Override
-                public void onSuccess(Void data) {
-                    _isFollowing.setValue(true);
-                    _isLoading.setValue(false);
-                }
-                @Override
-                public void onFailure(Exception e) {
-                    _error.setValue(e.getMessage());
-                    _isLoading.setValue(false);
                 }
             });
         }
     }
 
+    public void toggleFollow() {
+        if (currentUserId == null || profileUserId.equals(currentUserId) || _isFollowing.getValue() == null) {
+            return;
+        }
+
+        UserRepository.OnDataCallback<Void> callback = new UserRepository.OnDataCallback<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                // Data is refreshed automatically by the repository
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                _error.setValue("Follow/Unfollow failed: " + e.getMessage());
+            }
+        };
+
+        if (Boolean.TRUE.equals(_isFollowing.getValue())) {
+            userRepository.unfollowUser(profileUserId, callback);
+        } else {
+            userRepository.followUser(profileUserId, callback);
+        }
+    }
+
+    public void updateAvatar(Uri imageUri) {
+        if (currentUserId == null) {
+            _error.setValue("User not authenticated.");
+            return;
+        }
+        _isLoading.setValue(true);
+
+        userRepository.uploadAvatar(imageUri, new UserRepository.OnDataCallback<Uri>() {
+            @Override
+            public void onSuccess(Uri downloadUri) {
+                userRepository.updateUserAvatar(currentUserId, downloadUri.toString(), new UserRepository.OnDataCallback<Void>() {
+                    @Override
+                    public void onSuccess(Void data) {
+                        _isLoading.setValue(false);
+                    }
+                    @Override
+                    public void onFailure(Exception e) {
+                        _isLoading.setValue(false);
+                        _error.setValue("Failed to update avatar URL: " + e.getMessage());
+                    }
+                });
+            }
+            @Override
+            public void onFailure(Exception e) {
+                _isLoading.setValue(false);
+                _error.setValue("Avatar upload failed: " + e.getMessage());
+            }
+        });
+    }
+
     public void toggleLike(String postId) {
         postRepository.toggleLikeStatus(postId, new PostRepository.OnPostLikedListener() {
             @Override
-            public void onPostLiked() {}
+            public void onPostLiked() {
+                /* UI will update automatically via LiveData from Room */
+            }
+
             @Override
             public void onError(Exception e) {
-                _error.setValue(e.getMessage());
+                _error.setValue("Like failed: " + e.getMessage());
             }
         });
     }

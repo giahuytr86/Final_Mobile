@@ -1,5 +1,7 @@
 package com.testing.final_mobile.data.repository;
 
+import android.util.Log;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -27,7 +29,6 @@ public class AuthRepository {
                     if (task.isSuccessful()) {
                         FirebaseUser firebaseUser = firebaseAuth.getCurrentUser();
                         if (firebaseUser != null) {
-                            // Corrected to use username
                             User newUser = new User(firebaseUser.getUid(), username, email, "");
 
                             firestore.collection("users").document(firebaseUser.getUid())
@@ -61,6 +62,15 @@ public class AuthRepository {
 
     public void logout() {
         firebaseAuth.signOut();
+    }
+
+    public void updateFcmToken(String userId, String token) {
+        if (userId != null && token != null) {
+            firestore.collection("users").document(userId)
+                    .update("fcmToken", token)
+                    .addOnSuccessListener(aVoid -> Log.d(TAG, "FCM Token updated successfully for user: " + userId))
+                    .addOnFailureListener(e -> Log.e(TAG, "Error updating FCM Token", e));
+        }
     }
 
     public FirebaseUser getCurrentUser() {

@@ -11,12 +11,11 @@ import android.util.Log;
 import androidx.annotation.NonNull;
 import androidx.core.app.NotificationCompat;
 
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.messaging.FirebaseMessagingService;
 import com.google.firebase.messaging.RemoteMessage;
 import com.testing.final_mobile.R;
 import com.testing.final_mobile.ui.activity.MainActivity;
+import com.testing.final_mobile.ui.viewmodel.AuthViewModel;
 
 import java.util.Map;
 
@@ -31,43 +30,43 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
 
         Log.d(TAG, "From: " + remoteMessage.getFrom());
 
-        // Check if message contains a data payload.
-        if (!remoteMessage.getData().isEmpty()) {
-            Log.d(TAG, "Message data payload: " + remoteMessage.getData());
-            handleDataMessage(remoteMessage.getData());
-        }
+        String title = null;
+        String body = null;
 
         // Check if message contains a notification payload.
         if (remoteMessage.getNotification() != null) {
             Log.d(TAG, "Message Notification Body: " + remoteMessage.getNotification().getBody());
-            sendNotification(remoteMessage.getNotification().getTitle(), remoteMessage.getNotification().getBody());
+            title = remoteMessage.getNotification().getTitle();
+            body = remoteMessage.getNotification().getBody();
         }
-    }
 
-    private void handleDataMessage(Map<String, String> data) {
-        String title = data.get("title");
-        String body = data.get("body");
+        // Check if message contains a data payload (this can override the notification payload)
+        if (!remoteMessage.getData().isEmpty()) {
+            Log.d(TAG, "Message data payload: " + remoteMessage.getData());
+            title = remoteMessage.getData().getOrDefault("title", title);
+            body = remoteMessage.getData().getOrDefault("body", body);
+        }
 
         if (title != null && body != null) {
             sendNotification(title, body);
         }
     }
 
+    /**
+     * Called if the FCM registration token is updated.
+     * This may occur if the security of the previous token had been compromised.
+     * This is called when the FCM registration token is initially generated so this is where
+     * you would retrieve the token.
+     */
     @Override
     public void onNewToken(@NonNull String token) {
         super.onNewToken(token);
         Log.d(TAG, "Refreshed token: " + token);
-        sendTokenToServer(token);
-    }
 
-    public static void sendTokenToServer(String token) {
-        if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-            String userId = FirebaseAuth.getInstance().getCurrentUser().getUid();
-            FirebaseFirestore.getInstance().collection("users").document(userId)
-                    .update("fcmToken", token)
-                    .addOnSuccessListener(aVoid -> Log.d(TAG, "Token successfully updated for user: " + userId))
-                    .addOnFailureListener(e -> Log.e(TAG, "Error updating token", e));
-        }
+        // Instead of trying to send the token to the server directly (which requires a logged-in user),
+        // we pass it to the AuthViewModel. The ViewModel will hold it and update Firestore
+        // as soon as a user logs in or registers.
+        AuthViewModel.setPendingFcmToken(token);
     }
 
     private void sendNotification(String title, String messageBody) {
@@ -77,7 +76,7 @@ public class MyFirebaseMessagingService extends FirebaseMessagingService {
                 PendingIntent.FLAG_ONE_SHOT | PendingIntent.FLAG_IMMUTABLE);
 
         NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.ic_notification) // You need to create this icon
+                .setSmallIcon(R.drawable.ic_notification) // Icon created previously
                 .setContentTitle(title)
                 .setContentText(messageBody)
                 .setAutoCancel(true)

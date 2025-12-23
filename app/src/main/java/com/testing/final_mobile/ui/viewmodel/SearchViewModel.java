@@ -19,15 +19,12 @@ public class SearchViewModel extends AndroidViewModel {
     private final UserRepository userRepository;
     private final PostRepository postRepository;
 
-    // --- User Search --- //
     private final MutableLiveData<List<User>> _userSearchResults = new MutableLiveData<>();
     public LiveData<List<User>> userSearchResults = _userSearchResults;
 
-    // --- Post Search --- //
     private final MutableLiveData<List<Post>> _postSearchResults = new MutableLiveData<>();
     public LiveData<List<Post>> postSearchResults = _postSearchResults;
 
-    // --- Common --- //
     private final MutableLiveData<Boolean> _isLoading = new MutableLiveData<>(false);
     public LiveData<Boolean> isLoading = _isLoading;
 
@@ -36,20 +33,51 @@ public class SearchViewModel extends AndroidViewModel {
 
     public SearchViewModel(@NonNull Application application) {
         super(application);
-        // Correctly instantiate repositories
-        this.userRepository = new UserRepository();
+        this.userRepository = new UserRepository(application);
         this.postRepository = new PostRepository(application);
     }
 
     public void searchUsers(String searchTerm) {
+        if(searchTerm.isEmpty()){
+            _userSearchResults.setValue(null);
+            return;
+        }
         _isLoading.setValue(true);
         userRepository.searchUsers(searchTerm, _userSearchResults, _error);
-        // Loading state will be handled by observing the results/errors
     }
 
     public void searchPosts(String searchTerm) {
+        if(searchTerm.isEmpty()){
+            _postSearchResults.setValue(null);
+            return;
+        }
         _isLoading.setValue(true);
-        postRepository.searchPosts(searchTerm, _postSearchResults, _error);
-        // Loading state will be handled by observing the results/errors
+        postRepository.searchPosts(searchTerm, new PostRepository.OnPostsSearchedListener() {
+            @Override
+            public void onPostsSearched(List<Post> posts) {
+                _isLoading.setValue(false);
+                _postSearchResults.postValue(posts);
+            }
+
+            @Override
+            public void onError(Exception e) {
+                _isLoading.setValue(false);
+                _error.postValue(e.getMessage());
+            }
+        });
+    }
+
+    public void toggleLikeStatus(String postId) {
+        postRepository.toggleLikeStatus(postId, new PostRepository.OnPostLikedListener() {
+            @Override
+            public void onPostLiked() {
+                // The LiveData in the repository will trigger an update in the UI.
+            }
+
+            @Override
+            public void onError(Exception e) {
+                _error.postValue(e.getMessage());
+            }
+        });
     }
 }

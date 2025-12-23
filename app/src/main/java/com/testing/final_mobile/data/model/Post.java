@@ -5,6 +5,8 @@ import androidx.room.Entity;
 import androidx.room.Ignore;
 import androidx.room.PrimaryKey;
 
+import com.google.firebase.firestore.DocumentId;
+import com.google.firebase.firestore.Exclude;
 import com.google.firebase.firestore.ServerTimestamp;
 
 import java.util.ArrayList;
@@ -14,20 +16,22 @@ import java.util.Objects;
 
 @Entity(tableName = "posts")
 public class Post {
+
     @PrimaryKey
     @NonNull
-    private String id = ""; // Initialized to prevent null issues
+    @DocumentId
+    private String id = "";
 
     private String userId;
-    private String username; // Corrected
-    private String avatarUrl; // Corrected
+    private String username;
+    private String avatarUrl;
     private String content;
     private String imageUrl;
     @ServerTimestamp
     private Date timestamp;
-    private List<String> likes;
+    private List<String> likes = new ArrayList<>(); // Initialize to prevent nulls
     private int commentCount;
-    private String searchableContent;
+    private String searchableContent; // For case-insensitive search
 
     public Post() {
         // Default constructor required for Room and Firestore
@@ -51,25 +55,36 @@ public class Post {
 
     //<editor-fold desc="Getters and Setters">
     @NonNull
+    @Exclude // Prevent this from being WRITTEN to Firestore
     public String getId() { return id; }
+
+    @Exclude
+    public void setId(@NonNull String id) { this.id = id; }
+
     public String getUserId() { return userId; }
-    public String getUsername() { return username; } // Corrected
-    public String getAvatarUrl() { return avatarUrl; } // Corrected
+    public String getUsername() { return username; }
+    public String getAvatarUrl() { return avatarUrl; }
     public String getContent() { return content; }
     public String getImageUrl() { return imageUrl; }
     public Date getTimestamp() { return timestamp; }
-    public List<String> getLikes() { return likes != null ? likes : new ArrayList<>(); }
+
+    // Ensure likes are never null, which caused crashes in the UI layer.
+    public List<String> getLikes() {
+        return likes != null ? likes : new ArrayList<>();
+    }
+
     public int getCommentCount() { return commentCount; }
     public String getSearchableContent() { return searchableContent; }
 
-    public void setId(@NonNull String id) { this.id = id; }
     public void setUserId(String userId) { this.userId = userId; }
-    public void setUsername(String username) { this.username = username; } // Corrected
-    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; } // Corrected
+    public void setUsername(String username) { this.username = username; }
+    public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
     public void setContent(String content) {
         this.content = content;
         if (content != null) {
             this.searchableContent = content.toLowerCase();
+        } else {
+            this.searchableContent = null;
         }
     }
     public void setImageUrl(String imageUrl) { this.imageUrl = imageUrl; }

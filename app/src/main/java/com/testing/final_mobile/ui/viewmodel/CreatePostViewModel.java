@@ -9,6 +9,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.testing.final_mobile.data.repository.PostRepository;
+import com.testing.final_mobile.utils.SingleLiveEvent;
 
 public class CreatePostViewModel extends AndroidViewModel {
 
@@ -17,11 +18,14 @@ public class CreatePostViewModel extends AndroidViewModel {
     private final MutableLiveData<Boolean> _isLoading = new MutableLiveData<>(false);
     public final LiveData<Boolean> isLoading = _isLoading;
 
-    private final MutableLiveData<String> _error = new MutableLiveData<>();
+    private final SingleLiveEvent<String> _error = new SingleLiveEvent<>();
     public final LiveData<String> error = _error;
 
-    private final MutableLiveData<Boolean> _postCreated = new MutableLiveData<>(false);
-    public final LiveData<Boolean> postCreated = _postCreated;
+    // This is now a SingleLiveEvent to ensure the event is only handled once.
+    private final SingleLiveEvent<Void> _postCreatedEvent = new SingleLiveEvent<>();
+    public final LiveData<Void> getPostCreatedEvent() {
+        return _postCreatedEvent;
+    }
 
     public CreatePostViewModel(@NonNull Application application) {
         super(application);
@@ -34,7 +38,7 @@ public class CreatePostViewModel extends AndroidViewModel {
             @Override
             public void onPostCreated() {
                 _isLoading.postValue(false);
-                _postCreated.postValue(true);
+                _postCreatedEvent.call(); // Use .call() for event-like LiveData
             }
 
             @Override

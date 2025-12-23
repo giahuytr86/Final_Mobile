@@ -18,8 +18,8 @@
 
     <item
         android:id="@+id/navigation_notifications"
-        android:icon="@drawable/ic_heart_outline"
-        android:title="Activity" />
+        android:icon="@drawable/ic_message_square"
+        android:title="Message" />
 
     <item
         android:id="@+id/navigation_profile"

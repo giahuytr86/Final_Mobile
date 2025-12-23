@@ -16,12 +16,19 @@ public class MessageRepository {
     private final MessageRemoteDataSource remoteDataSource;
     private final String currentUserId;
 
+    // Public listener for ViewModel to use
+    public interface OnMessageSendListener {
+        void onSuccess();
+        void onFailure(Exception e);
+    }
+
     public MessageRepository() {
         this.remoteDataSource = new MessageRemoteDataSource();
         this.currentUserId = FirebaseAuth.getInstance().getUid();
     }
 
     private String getConversationId(String user1Id, String user2Id) {
+        if (user1Id == null || user2Id == null) return "";
         List<String> ids = Arrays.asList(user1Id, user2Id);
         Collections.sort(ids);
         return ids.get(0) + "_" + ids.get(1);
@@ -29,7 +36,10 @@ public class MessageRepository {
 
     public LiveData<List<ChatMessage>> getMessages(String otherUserId) {
         MutableLiveData<List<ChatMessage>> messagesData = new MutableLiveData<>();
-        if (currentUserId == null) return messagesData;
+        if (currentUserId == null) {
+            messagesData.postValue(Collections.emptyList());
+            return messagesData;
+        }
 
         remoteDataSource.getMessages(currentUserId, otherUserId, new MessageRemoteDataSource.MessagesListener() {
             @Override
@@ -39,15 +49,16 @@ public class MessageRepository {
 
             @Override
             public void onError(Exception e) {
-                // Handle error appropriately
+                // In a real app, you might want to post an error to the LiveData
+                messagesData.postValue(Collections.emptyList());
             }
         });
         return messagesData;
     }
 
-    public void sendMessage(String text, String receiverId, MessageRemoteDataSource.SendMessageListener listener) {
+    public void sendMessage(String text, String receiverId, final OnMessageSendListener listener) {
         if (currentUserId == null) {
-            listener.onError(new Exception("User not logged in."));
+            listener.onFailure(new Exception("User not logged in."));
             return;
         }
 
@@ -56,8 +67,18 @@ public class MessageRepository {
         message.setConversationId(conversationId);
         message.setSenderId(currentUserId);
         message.setMessage(text);
-        // senderName could be set here if you have it readily available
 
-        remoteDataSource.sendMessage(message, listener);
+        // The repository now acts as an intermediary
+        remoteDataSource.sendMessage(message, new MessageRemoteDataSource.SendMessageListener() {
+            @Override
+            public void onMessageSent() {
+                listener.onSuccess();
+            }
+
+            @Override
+            public void onError(Exception e) {
+                listener.onFailure(e);
+            }
+        });
     }
 }

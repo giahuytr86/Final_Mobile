@@ -8,6 +8,7 @@ import androidx.lifecycle.LiveData;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.testing.final_mobile.data.local.AppDatabase;
 import com.testing.final_mobile.data.local.CommentDao;
@@ -26,6 +27,7 @@ public class CommentRepository {
     private final CommentRemoteDataSource remoteDataSource;
     private final FirebaseFirestore firestore;
     private final FirebaseAuth auth;
+    private final PostRepository postRepository; // Added PostRepository
 
     public interface OnCommentOperationListener {
         void onSuccess();
@@ -38,6 +40,7 @@ public class CommentRepository {
         this.remoteDataSource = new CommentRemoteDataSource(new FirestoreService());
         this.firestore = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
+        this.postRepository = new PostRepository(application); // Instantiate PostRepository
     }
 
     public LiveData<List<Comment>> getCommentsForPost(String postId) {
@@ -69,8 +72,20 @@ public class CommentRepository {
                     remoteDataSource.addComment(newComment, new CommentRemoteDataSource.OnCommentAddedListener() {
                         @Override
                         public void onCommentAdded(DocumentReference documentReference) {
-                            refreshCommentsFromServer(postId);
-                            listener.onSuccess();
+                            firestore.collection("posts").document(postId)
+                                    .update("commentCount", FieldValue.increment(1))
+                                    .addOnSuccessListener(aVoid -> {
+                                        // Now, refresh both comments and the post itself
+                                        refreshCommentsFromServer(postId);
+                                        postRepository.refreshPostFromServer(postId); // Refresh the post
+                                        listener.onSuccess();
+                                    })
+                                    .addOnFailureListener(e -> {
+                                        Log.e(TAG, "Error updating comment count", e);
+                                        // Still try to refresh and report success
+                                        refreshCommentsFromServer(postId);
+                                        listener.onSuccess();
+                                    });
                         }
 
                         @Override
@@ -82,14 +97,12 @@ public class CommentRepository {
                 .addOnFailureListener(listener::onError);
     }
 
-    // toggleLikeStatus has been removed
-
     private void refreshCommentsFromServer(String postId) {
         remoteDataSource.fetchCommentsForPost(postId, new CommentRemoteDataSource.OnCommentsFetchedListener() {
             @Override
             public void onCommentsFetched(List<Comment> comments) {
                 AppDatabase.databaseWriteExecutor.execute(() -> {
-                    commentDao.deleteAll(); // Simple cache invalidation
+                    commentDao.deleteCommentsForPost(postId);
                     commentDao.insertAll(comments);
                 });
             }
