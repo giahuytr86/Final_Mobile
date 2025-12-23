@@ -5,6 +5,7 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.testing.final_mobile.data.model.Post;
@@ -13,8 +14,8 @@ import com.testing.final_mobile.data.repository.PostRepository;
 public class PostDetailViewModel extends AndroidViewModel {
 
     private final PostRepository postRepository;
-
-    private LiveData<Post> post;
+    private final MediatorLiveData<Post> _post = new MediatorLiveData<>();
+    public final LiveData<Post> post = _post;
     private final MutableLiveData<String> _error = new MutableLiveData<>();
     public final LiveData<String> error = _error;
 
@@ -24,7 +25,10 @@ public class PostDetailViewModel extends AndroidViewModel {
     }
 
     public void fetchPost(String postId) {
-        post = postRepository.getPostById(postId);
+        LiveData<Post> postSource = postRepository.getPostById(postId);
+        _post.addSource(postSource, postData -> {
+            _post.setValue(postData);
+        });
     }
 
     public LiveData<Post> getPost() {

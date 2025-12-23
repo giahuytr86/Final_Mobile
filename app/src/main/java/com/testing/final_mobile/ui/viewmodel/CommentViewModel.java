@@ -5,6 +5,7 @@ import android.app.Application;
 import androidx.annotation.NonNull;
 import androidx.lifecycle.AndroidViewModel;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MediatorLiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.testing.final_mobile.data.model.Comment;
@@ -15,7 +16,8 @@ import java.util.List;
 public class CommentViewModel extends AndroidViewModel {
 
     private final CommentRepository commentRepository;
-
+    private final MediatorLiveData<List<Comment>> _comments = new MediatorLiveData<>();
+    public final LiveData<List<Comment>> comments = _comments;
     private final MutableLiveData<Boolean> _isLoading = new MutableLiveData<>(false);
     public final LiveData<Boolean> isLoading = _isLoading;
 
@@ -28,6 +30,14 @@ public class CommentViewModel extends AndroidViewModel {
     public CommentViewModel(@NonNull Application application) {
         super(application);
         this.commentRepository = new CommentRepository(application);
+    }
+
+    public void fetchComments(String postId) {
+        LiveData<List<Comment>> source = commentRepository.getCommentsForPost(postId);
+        // Lắng nghe dữ liệu từ repository và đẩy vào MediatorLiveData
+        _comments.addSource(source, commentList -> {
+            _comments.setValue(commentList);
+        });
     }
 
     public LiveData<List<Comment>> getCommentsForPost(String postId) {

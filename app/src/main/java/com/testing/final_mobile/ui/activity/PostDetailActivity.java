@@ -43,7 +43,7 @@ public class PostDetailActivity extends AppCompatActivity implements CommentAdap
         binding = ActivityPostDetailBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
 
-        postId = getIntent().getStringExtra(EXTRA_POST_ID);
+        postId = getIntent().getStringExtra("EXTRA_POST_ID");
         if (postId == null) {
             Toast.makeText(this, "Post ID is missing.", Toast.LENGTH_SHORT).show();
             finish();

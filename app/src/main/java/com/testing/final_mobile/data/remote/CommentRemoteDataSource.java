@@ -44,6 +44,12 @@ public class CommentRemoteDataSource {
     // toggleLikeStatus method has been completely removed.
 
     public void fetchCommentsForPost(String postId, OnCommentsFetchedListener listener) {
+        if (postId == null || postId.trim().isEmpty()) {
+            Log.e(TAG, "postId is null or empty!");
+            listener.onCommentsFetched(new ArrayList<>());
+            return;
+        }
+
         String commentPath = POST_COLLECTION + "/" + postId + "/" + COMMENT_SUB_COLLECTION;
         Query query = firestoreService.getCollection(commentPath).orderBy("timestamp", Query.Direction.ASCENDING);
 
