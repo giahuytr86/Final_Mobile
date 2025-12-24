@@ -75,7 +75,14 @@
             android:textColor="@color/black"
             android:textSize="15sp" />
 
-        <!-- Content Image View is removed -->
+        <ImageView
+            android:id="@+id/ivPostImage"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            android:visibility="gone"/>
 
         <!-- Actions Bar -->
         <LinearLayout

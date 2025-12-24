@@ -94,7 +94,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="12dp"
                     android:adjustViewBounds="true"
-                    android:scaleType="centerCrop"
+                    android:scaleType="fitCenter"
                     android:visibility="gone" />
 
                 <!-- Actions: Replicated from item_post.xml -->

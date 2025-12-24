@@ -65,7 +65,7 @@ dependencies {
     // Image Loading
     implementation("com.github.bumptech.glide:glide:4.12.0")
     annotationProcessor("com.github.bumptech.glide:compiler:4.12.0")
-
+    implementation("com.cloudinary:cloudinary-android:3.0.2")
     // JSON Parsing
     implementation("com.google.code.gson:gson:2.9.0") // Corrected syntax for Kotlin DSL
 

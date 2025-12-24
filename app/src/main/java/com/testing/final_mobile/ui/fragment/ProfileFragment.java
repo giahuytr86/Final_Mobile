@@ -1,5 +1,6 @@
 package com.testing.final_mobile.ui.fragment;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -17,6 +18,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.testing.final_mobile.R;
 import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.databinding.FragmentProfileBinding;
+import com.testing.final_mobile.ui.activity.SettingsActivity;
 import com.testing.final_mobile.ui.adapter.PostAdapter;
 import com.testing.final_mobile.ui.viewmodel.ProfileViewModel;
 
@@ -53,7 +55,11 @@ public class ProfileFragment extends Fragment {
 
         setupRecyclerView();
         observeViewModel();
-        // No need for setupClickListeners for the user's own profile actions like follow
+
+        binding.btnSettings.setOnClickListener(v -> {
+            Intent intent = new Intent(getActivity(), SettingsActivity.class);
+            startActivity(intent);
+        });
     }
 
     private void setupRecyclerView() {

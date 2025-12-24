@@ -40,6 +40,19 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toTopOf="parent" />
 
+            <!-- Settings Button (NÚT MỚI) -->
+            <ImageView
+                android:id="@+id/btnSettings"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_margin="16dp"
+                android:background="@drawable/bg_circle_translucent"
+                android:padding="6dp"
+                android:src="@drawable/ic_settings"
+                app:tint="@color/white"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
             <!-- Avatar -->
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/ivProfileAvatar"
@@ -56,7 +69,6 @@
                 app:layout_constraintTop_toBottomOf="@id/ivCover"
                 app:layout_constraintVertical_bias="1.0"
                 android:layout_marginBottom="-40dp"/>
-            <!-- margin bottom âm để avatar đè lên cover và phần dưới -->
 
             <!-- Action Buttons -->
             <LinearLayout
@@ -90,7 +102,7 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <!-- User Info -->
+        <!-- User Info (Dữ nguyên phần dưới) -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -99,7 +111,6 @@
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:paddingBottom="16dp">
-            <!-- Padding top lớn để bù cho phần avatar lấn xuống -->
 
             <TextView
                 android:id="@+id/tvProfileName"
@@ -264,7 +275,6 @@
             android:layout_height="wrap_content"
             android:minHeight="300dp">
 
-            <!-- View 1: RecyclerView cho Posts và Photos -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvProfileContent"
                 android:layout_width="match_parent"
@@ -272,7 +282,6 @@
                 android:nestedScrollingEnabled="false"
                 android:paddingBottom="80dp" />
 
-            <!-- View 2: About Info (Mặc định ẩn) -->
             <LinearLayout
                 android:id="@+id/layoutAbout"
                 android:layout_width="match_parent"
@@ -280,55 +289,15 @@
                 android:orientation="vertical"
                 android:padding="24dp"
                 android:visibility="gone">
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="16dp">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_message_circle"
-                        app:tint="@color/text_gray"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:text="Joined June 2023"
-                        android:textColor="@color/black"
-                        android:textSize="16sp"/>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="16dp">
-                    <ImageView
-                        android:layout_width="24dp"
-                        android:layout_height="24dp"
-                        android:src="@drawable/ic_share"
-                        app:tint="@color/text_gray"/>
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:text="https://itsocial.com/u/username"
-                        android:textColor="@color/colorPrimary"
-                        android:textSize="16sp"/>
-                </LinearLayout>
-
+                <!-- About Content... -->
             </LinearLayout>
 
-            <!-- Loading View -->
             <ProgressBar
                 android:id="@+id/progressBar"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_gravity="center"
                 android:visibility="gone"/>
-
         </FrameLayout>
 
     </LinearLayout>

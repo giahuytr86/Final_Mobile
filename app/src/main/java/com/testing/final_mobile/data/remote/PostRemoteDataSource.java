@@ -76,7 +76,7 @@ public class PostRemoteDataSource {
                 List<Post> posts = new ArrayList<>();
                 for (QueryDocumentSnapshot doc : task.getResult()) {
                     Post post = doc.toObject(Post.class);
-                    post.setId(doc.getId()); // Corrected method name
+                    post.setId(doc.getId());
                     posts.add(post);
                 }
                 listener.onPostsSearched(posts);
@@ -90,6 +90,12 @@ public class PostRemoteDataSource {
     }
 
     public void toggleLikeStatus(String postId, String userId, OnPostLikeUpdatedListener listener) {
+        if (postId == null || postId.trim().isEmpty()) {
+            Log.e(TAG, "toggleLikeStatus failed: postId is null or empty");
+            listener.onError(new IllegalArgumentException("Post ID cannot be null or empty"));
+            return;
+        }
+
         DocumentReference postRef = firestoreService.getDocument(POST_COLLECTION, postId);
 
         Transaction.Function<Void> updateFunction = transaction -> {
@@ -98,13 +104,16 @@ public class PostRemoteDataSource {
                 throw new FirebaseFirestoreException("Post not found", FirebaseFirestoreException.Code.NOT_FOUND);
             }
 
-            List<String> likes = post.getLikes(); // Correct type
+            List<String> likes = post.getLikes();
+            if (likes == null) {
+                likes = new ArrayList<>();
+            }
+
             if (likes.contains(userId)) {
                 likes.remove(userId);
             } else {
                 likes.add(userId);
             }
-            // The like count is now derived, so we only update the list.
             transaction.update(postRef, "likes", likes);
             return null;
         };
@@ -122,10 +131,8 @@ public class PostRemoteDataSource {
     }
 
     public void createPost(Post newPost, OnPostCreatedListener listener) {
-        // Use the specific document reference to ensure the ID is what we set in the repository
         firestoreService.getDocument(POST_COLLECTION, newPost.getId()).set(newPost).addOnCompleteListener(task -> {
             if (task.isSuccessful()) {
-                // The result of a set operation is void, so we pass the reference we already have.
                 listener.onPostCreated(firestoreService.getDocument(POST_COLLECTION, newPost.getId()));
             } else {
                 Log.e(TAG, "Error creating post", task.getException());
@@ -147,7 +154,7 @@ public class PostRemoteDataSource {
                 if (snapshots != null) {
                     for (QueryDocumentSnapshot doc : snapshots) {
                         Post post = doc.toObject(Post.class);
-                        post.setId(doc.getId()); // Corrected method name
+                        post.setId(doc.getId());
                         postList.add(post);
                     }
                 }
@@ -162,12 +169,17 @@ public class PostRemoteDataSource {
     }
 
     public void fetchPostById(String postId, OnPostFetchedListener listener) {
+        if (postId == null || postId.trim().isEmpty()) {
+            listener.onError(new IllegalArgumentException("Post ID cannot be null or empty"));
+            return;
+        }
+
         firestoreService.getDocument(firestoreService.getDocument(POST_COLLECTION, postId), task -> {
             if (task.isSuccessful()) {
                 if (task.getResult() != null && task.getResult().exists()) {
                     Post post = task.getResult().toObject(Post.class);
                     if (post != null) {
-                        post.setId(task.getResult().getId()); // Corrected method name
+                        post.setId(task.getResult().getId());
                         listener.onPostFetched(post);
                     }
                 } else {

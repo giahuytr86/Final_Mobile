@@ -97,6 +97,15 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
                 binding.ivLikeIcon.setColorFilter(ContextCompat.getColor(itemView.getContext(), R.color.text_gray));
             }
 
+            if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
+                binding.ivPostImage.setVisibility(View.VISIBLE);
+                Glide.with(itemView.getContext())
+                        .load(post.getImageUrl())
+                        .placeholder(R.drawable.ic_image)
+                        .error(R.drawable.ic_image)
+                        .into(binding.ivPostImage);
+            };
+
             View.OnClickListener profileClickListener = v -> {
                 Intent intent = new Intent(itemView.getContext(), ProfileActivity.class);
                 intent.putExtra(ProfileActivity.EXTRA_USER_ID, post.getUserId());
