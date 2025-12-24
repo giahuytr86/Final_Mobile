@@ -43,7 +43,11 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
         setupRecyclerView();
         setupClickListeners();
         observeViewModel();
+    }
 
+    @Override
+    public void onResume() {
+        super.onResume();
         loadUserAvatar();
     }
 
@@ -75,13 +79,20 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
     }
 
     private void loadUserAvatar() {
-        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
-        if (currentUser != null && getContext() != null) {
-            Glide.with(getContext())
-                    .load(currentUser.getPhotoUrl())
-                    .placeholder(R.drawable.placeholder_avatar)
-                    .circleCrop()
-                    .into(binding.ivMyAvatar);
+        String uid = FirebaseAuth.getInstance().getUid();
+        if (uid != null && getContext() != null) {
+            com.google.firebase.firestore.FirebaseFirestore.getInstance()
+                    .collection("users").document(uid).get()
+                    .addOnSuccessListener(documentSnapshot -> {
+                        if (isAdded() && binding != null) { // Kiểm tra fragment còn tồn tại không
+                            String avatarUrl = documentSnapshot.getString("avatarUrl");
+                            Glide.with(this)
+                                    .load(avatarUrl)
+                                    .placeholder(R.drawable.placeholder_avatar)
+                                    .circleCrop()
+                                    .into(binding.ivMyAvatar);
+                        }
+                    });
         }
     }
 
