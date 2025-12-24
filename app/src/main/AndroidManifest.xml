@@ -50,7 +50,9 @@
         <activity
             android:name=".ui.activity.SettingsActivity"
             android:exported="false" />
-
+        <activity
+            android:name=".ui.activity.ProfileActivity"
+            android:exported="false" />
         <!-- Firebase Messaging Service -->
         <service
             android:name=".service.MyFirebaseMessagingService"
