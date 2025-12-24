@@ -15,6 +15,7 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.Query;
 import com.testing.final_mobile.data.local.AppDatabase;
 import com.testing.final_mobile.data.local.PostDao;
 import com.testing.final_mobile.data.model.Post;
@@ -47,6 +48,18 @@ public class PostRepository {
         void onError(Exception e);
     }
 
+    public LiveData<List<Post>> getPostsByUserId(String userId) {
+        MutableLiveData<List<Post>> userPosts = new MutableLiveData<>();
+        firestore.collection("posts")
+                .whereEqualTo("userId", userId) // Lọc theo ID người dùng
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .addSnapshotListener((value, error) -> {
+                    if (value != null) {
+                        userPosts.setValue(value.toObjects(Post.class));
+                    }
+                });
+        return userPosts;
+    }
     public PostRepository(Application application) {
         AppDatabase database = AppDatabase.getDatabase(application);
         this.postDao = database.postDao();

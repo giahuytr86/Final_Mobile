@@ -52,11 +52,11 @@ public class ProfileViewModel extends AndroidViewModel {
     }
 
     private void loadUserPosts() {
-        postRepository.getAllPosts().observeForever(allPosts -> {
-            _posts.setValue(allPosts);
+        // Sửa từ getAllPosts() thành getPostsByUserId(profileUserId)
+        postRepository.getPostsByUserId(profileUserId).observeForever(userPosts -> {
+            _posts.setValue(userPosts);
         });
     }
-
     private void checkIfFollowing() {
         if (currentUserId == null || profileUserId.equals(currentUserId)) return;
         userRepository.getUser(currentUserId).observeForever(currentUser -> {
@@ -67,7 +67,6 @@ public class ProfileViewModel extends AndroidViewModel {
             }
         });
     }
-
     public void toggleFollow() {
         if (currentUserId == null || profileUserId.equals(currentUserId)) return;
         _isLoading.setValue(true);
