@@ -1,5 +1,6 @@
 package com.testing.final_mobile.ui.fragment;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -11,11 +12,13 @@ import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
+import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.databinding.FragmentUserSearchResultsBinding;
+import com.testing.final_mobile.ui.activity.ProfileActivity;
 import com.testing.final_mobile.ui.adapter.UserAdapter;
 import com.testing.final_mobile.ui.viewmodel.SearchViewModel;
 
-public class UserSearchResultsFragment extends Fragment {
+public class UserSearchResultsFragment extends Fragment implements UserAdapter.OnUserClickListener {
 
     private FragmentUserSearchResultsBinding binding;
     private SearchViewModel sharedViewModel;
@@ -32,7 +35,6 @@ public class UserSearchResultsFragment extends Fragment {
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
 
-        // Get the ViewModel shared from the parent SearchFragment
         sharedViewModel = new ViewModelProvider(requireActivity()).get(SearchViewModel.class);
 
         setupRecyclerView();
@@ -40,7 +42,8 @@ public class UserSearchResultsFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        userAdapter = new UserAdapter();
+        // Pass 'this' as the listener to the adapter
+        userAdapter = new UserAdapter(this);
         binding.rvUserResults.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.rvUserResults.setAdapter(userAdapter);
     }
@@ -51,6 +54,15 @@ public class UserSearchResultsFragment extends Fragment {
                 userAdapter.submitList(users);
             }
         });
+    }
+
+    @Override
+    public void onUserClick(User user) {
+        // When a user is clicked, open their profile
+        Intent intent = new Intent(getActivity(), ProfileActivity.class);
+        // Make sure ProfileActivity uses this same key to retrieve the ID
+        intent.putExtra("EXTRA_USER_ID", user.getUid());
+        startActivity(intent);
     }
 
     @Override
