@@ -1,5 +1,6 @@
 package com.testing.final_mobile.ui.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
@@ -11,7 +12,7 @@ import com.testing.final_mobile.R;
 import com.testing.final_mobile.ui.fragment.HomeFragment;
 import com.testing.final_mobile.ui.fragment.ProfileFragment;
 import com.testing.final_mobile.ui.fragment.SearchFragment;
-import com.testing.final_mobile.ui.fragment.ConversationFragment; // Placeholder for messages/activity
+import com.testing.final_mobile.ui.fragment.ConversationFragment;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -24,7 +25,7 @@ public class MainActivity extends AppCompatActivity {
 
         bottomNavigationView = findViewById(R.id.bottom_navigation);
 
-        // Set the listener for bottom navigation
+        // Thiết lập sự kiện lắng nghe cho bottom navigation
         bottomNavigationView.setOnNavigationItemSelectedListener(item -> {
             Fragment selectedFragment = null;
             int itemId = item.getItemId();
@@ -34,10 +35,12 @@ public class MainActivity extends AppCompatActivity {
             } else if (itemId == R.id.navigation_search) {
                 selectedFragment = new SearchFragment();
             } else if (itemId == R.id.navigation_add_post) {
-                // TODO: Handle post creation, maybe start an activity
-                return false; // Don't select the item
+                // Mở Activity tạo bài viết mới
+                Intent intent = new Intent(MainActivity.this, CreatePostActivity.class);
+                startActivity(intent);
+                // Trả về false để không làm thay đổi trạng thái chọn (selection) của thanh menu
+                return false; 
             } else if (itemId == R.id.navigation_notifications) {
-                // Placeholder - you can create a NotificationsFragment
                 selectedFragment = new ConversationFragment();
             } else if (itemId == R.id.navigation_profile) {
                 selectedFragment = new ProfileFragment();
@@ -50,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
             return false;
         });
 
-        // Load the default fragment
+        // Load fragment mặc định (Trang chủ)
         if (savedInstanceState == null) {
             bottomNavigationView.setSelectedItemId(R.id.navigation_home);
         }
