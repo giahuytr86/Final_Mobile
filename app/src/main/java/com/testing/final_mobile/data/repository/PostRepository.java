@@ -37,6 +37,7 @@ public class PostRepository {
     private final Application application;
     private final FirebaseFirestore firestore;
     private final FirebaseAuth auth;
+    private boolean isListeningAllPosts = false;
 
     public interface OnPostCreatedListener {
         void onPostCreated();
@@ -51,7 +52,7 @@ public class PostRepository {
     public LiveData<List<Post>> getPostsByUserId(String userId) {
         MutableLiveData<List<Post>> userPosts = new MutableLiveData<>();
         firestore.collection("posts")
-                .whereEqualTo("userId", userId) // Lọc theo ID người dùng
+                .whereEqualTo("userId", userId)
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener((value, error) -> {
                     if (value != null) {
@@ -60,11 +61,12 @@ public class PostRepository {
                 });
         return userPosts;
     }
+
     public PostRepository(Application application) {
         AppDatabase database = AppDatabase.getDatabase(application);
         this.postDao = database.postDao();
         this.remoteDataSource = new PostRemoteDataSource(new FirestoreService());
-        this.storageService = new StorageService(); // Initialize StorageService
+        this.storageService = new StorageService();
         this.application = application;
         this.firestore = FirebaseFirestore.getInstance();
         this.auth = FirebaseAuth.getInstance();
@@ -124,7 +126,6 @@ public class PostRepository {
         remoteDataSource.createPost(newPost, new PostRemoteDataSource.OnPostCreatedListener() {
             @Override
             public void onPostCreated(DocumentReference documentReference) {
-                refreshPostFromServer(documentReference.getId());
                 listener.onPostCreated();
             }
 
@@ -159,7 +160,7 @@ public class PostRepository {
         remoteDataSource.toggleLikeStatus(postId, currentUserId, new PostRemoteDataSource.OnPostLikeUpdatedListener() {
             @Override
             public void onPostLikeUpdated() {
-                refreshPostFromServer(postId);
+                // No manual refresh needed because of SnapshotListener
                 listener.onPostLiked();
             }
 
@@ -181,35 +182,37 @@ public class PostRepository {
     }
 
     private void refreshPostsFromServer() {
-        if (!isNetworkAvailable()) return;
+        if (!isNetworkAvailable() || isListeningAllPosts) return;
 
-        remoteDataSource.fetchAllPosts(new PostRemoteDataSource.OnPostsFetchedListener() {
-            @Override
-            public void onPostsFetched(List<Post> posts) {
-                AppDatabase.databaseWriteExecutor.execute(() -> postDao.insertAll(posts));
-            }
-
-            @Override
-            public void onError(Exception e) {
-                Log.e(TAG, "Error refreshing posts from server", e);
-            }
-        });
+        isListeningAllPosts = true;
+        firestore.collection("posts")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) {
+                        Log.e(TAG, "Error listening for posts", error);
+                        isListeningAllPosts = false;
+                        return;
+                    }
+                    if (value != null) {
+                        List<Post> posts = value.toObjects(Post.class);
+                        AppDatabase.databaseWriteExecutor.execute(() -> postDao.insertAll(posts));
+                    }
+                });
     }
 
     private void refreshPostFromServer(String postId) {
         if (!isNetworkAvailable()) return;
 
-        remoteDataSource.fetchPostById(postId, new PostRemoteDataSource.OnPostFetchedListener() {
-            @Override
-            public void onPostFetched(Post post) {
-                AppDatabase.databaseWriteExecutor.execute(() -> postDao.insertAll(Collections.singletonList(post)));
-            }
-
-            @Override
-            public void onError(Exception e) {
-                Log.e(TAG, "Error refreshing post " + postId + " from server", e);
-            }
-        });
+        firestore.collection("posts").document(postId)
+                .addSnapshotListener((value, error) -> {
+                    if (error != null) return;
+                    if (value != null && value.exists()) {
+                        Post post = value.toObject(Post.class);
+                        if (post != null) {
+                            AppDatabase.databaseWriteExecutor.execute(() -> postDao.insertAll(Collections.singletonList(post)));
+                        }
+                    }
+                });
     }
 
     private boolean isNetworkAvailable() {

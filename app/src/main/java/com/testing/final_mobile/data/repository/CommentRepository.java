@@ -8,6 +8,7 @@ import androidx.lifecycle.LiveData;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.testing.final_mobile.data.local.AppDatabase;
 import com.testing.final_mobile.data.local.CommentDao;
@@ -69,6 +70,12 @@ public class CommentRepository {
                     remoteDataSource.addComment(newComment, new CommentRemoteDataSource.OnCommentAddedListener() {
                         @Override
                         public void onCommentAdded(DocumentReference documentReference) {
+                            // Tăng số lượng commentCount trong document của Post tương ứng
+                            firestore.collection("posts").document(postId)
+                                    .update("commentCount", FieldValue.increment(1))
+                                    .addOnSuccessListener(aVoid -> Log.d(TAG, "Comment count incremented"))
+                                    .addOnFailureListener(e -> Log.e(TAG, "Error incrementing comment count", e));
+
                             refreshCommentsFromServer(postId);
                             listener.onSuccess();
                         }
@@ -81,8 +88,6 @@ public class CommentRepository {
                 })
                 .addOnFailureListener(listener::onError);
     }
-
-    // toggleLikeStatus has been removed
 
     private void refreshCommentsFromServer(String postId) {
         remoteDataSource.fetchCommentsForPost(postId, new CommentRemoteDataSource.OnCommentsFetchedListener() {
