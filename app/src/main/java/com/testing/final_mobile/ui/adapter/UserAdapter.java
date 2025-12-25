@@ -17,8 +17,15 @@ import java.util.Objects;
 
 public class UserAdapter extends ListAdapter<User, UserAdapter.UserViewHolder> {
 
-    public UserAdapter() {
+    public interface OnUserClickListener {
+        void onUserClick(User user);
+    }
+
+    private final OnUserClickListener clickListener;
+
+    public UserAdapter(OnUserClickListener clickListener) {
         super(DIFF_CALLBACK);
+        this.clickListener = clickListener;
     }
 
     private static final DiffUtil.ItemCallback<User> DIFF_CALLBACK = new DiffUtil.ItemCallback<User>() {
@@ -29,7 +36,6 @@ public class UserAdapter extends ListAdapter<User, UserAdapter.UserViewHolder> {
 
         @Override
         public boolean areContentsTheSame(@NonNull User oldItem, @NonNull User newItem) {
-            // Corrected to use new getters and be null-safe
             return Objects.equals(oldItem.getUsername(), newItem.getUsername()) &&
                    Objects.equals(oldItem.getAvatarUrl(), newItem.getAvatarUrl());
         }
@@ -39,7 +45,7 @@ public class UserAdapter extends ListAdapter<User, UserAdapter.UserViewHolder> {
     @Override
     public UserViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         ItemUserBinding binding = ItemUserBinding.inflate(LayoutInflater.from(parent.getContext()), parent, false);
-        return new UserViewHolder(binding);
+        return new UserViewHolder(binding, clickListener);
     }
 
     @Override
@@ -49,14 +55,15 @@ public class UserAdapter extends ListAdapter<User, UserAdapter.UserViewHolder> {
 
     static class UserViewHolder extends RecyclerView.ViewHolder {
         private final ItemUserBinding binding;
+        private final OnUserClickListener clickListener;
 
-        public UserViewHolder(ItemUserBinding binding) {
+        public UserViewHolder(ItemUserBinding binding, OnUserClickListener clickListener) {
             super(binding.getRoot());
             this.binding = binding;
+            this.clickListener = clickListener;
         }
 
         public void bind(User user) {
-            // Corrected to use getUsername()
             binding.tvUserName.setText(user.getUsername());
             if (user.getUsername() != null) {
                 binding.tvUserHandle.setText("@" + user.getUsername().toLowerCase().replaceAll("\\s", ""));
@@ -64,14 +71,17 @@ public class UserAdapter extends ListAdapter<User, UserAdapter.UserViewHolder> {
                 binding.tvUserHandle.setText("@user");
             }
 
-            // Corrected to use getAvatarUrl()
             Glide.with(itemView.getContext())
                     .load(user.getAvatarUrl())
                     .placeholder(R.drawable.placeholder_avatar)
                     .circleCrop()
                     .into(binding.ivUserAvatar);
 
-            // TODO: Add click listener for the item or the follow button
+            itemView.setOnClickListener(v -> {
+                if (clickListener != null) {
+                    clickListener.onUserClick(user);
+                }
+            });
         }
     }
 }
