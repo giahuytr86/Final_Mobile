@@ -16,9 +16,8 @@ import com.testing.final_mobile.data.model.User;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-// Incremented version to 5 due to schema changes in Post/Comment entities.
-// Consolidated all type converters into the single Converters.class to resolve conflicts.
-@Database(entities = {Post.class, Comment.class, ChatMessage.class, Conversation.class, User.class}, version = 5, exportSchema = false)
+// Incremented version to 6 due to schema changes in Conversation entity (added participants, etc.).
+@Database(entities = {Post.class, Comment.class, ChatMessage.class, Conversation.class, User.class}, version = 6, exportSchema = false)
 @TypeConverters(Converters.class)
 public abstract class AppDatabase extends RoomDatabase {
 

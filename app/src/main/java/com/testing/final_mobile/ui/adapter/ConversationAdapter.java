@@ -14,6 +14,8 @@ import com.testing.final_mobile.data.model.Conversation;
 import com.testing.final_mobile.databinding.ItemConversationBinding;
 import com.testing.final_mobile.utils.TimestampConverter;
 
+import java.util.Objects;
+
 public class ConversationAdapter extends ListAdapter<Conversation, ConversationAdapter.ConversationViewHolder> {
 
     public interface OnConversationClickListener {
@@ -30,13 +32,15 @@ public class ConversationAdapter extends ListAdapter<Conversation, ConversationA
     private static final DiffUtil.ItemCallback<Conversation> DIFF_CALLBACK = new DiffUtil.ItemCallback<Conversation>() {
         @Override
         public boolean areItemsTheSame(@NonNull Conversation oldItem, @NonNull Conversation newItem) {
-            return oldItem.getConversationId().equals(newItem.getConversationId());
+            return Objects.equals(oldItem.getConversationId(), newItem.getConversationId());
         }
 
         @Override
         public boolean areContentsTheSame(@NonNull Conversation oldItem, @NonNull Conversation newItem) {
-            return oldItem.getLastMessage().equals(newItem.getLastMessage()) &&
-                   oldItem.getLastMessageTimestamp().equals(newItem.getLastMessageTimestamp());
+            return Objects.equals(oldItem.getLastMessage(), newItem.getLastMessage()) &&
+                   Objects.equals(oldItem.getLastMessageTimestamp(), newItem.getLastMessageTimestamp()) &&
+                   Objects.equals(oldItem.getOtherUserName(), newItem.getOtherUserName()) &&
+                   Objects.equals(oldItem.getOtherUserAvatar(), newItem.getOtherUserAvatar());
         }
     };
 
@@ -63,11 +67,13 @@ public class ConversationAdapter extends ListAdapter<Conversation, ConversationA
         }
 
         public void bind(Conversation conversation) {
-            binding.tvUserName.setText(conversation.getOtherUserName());
-            binding.tvLastMessage.setText(conversation.getLastMessage());
+            binding.tvUserName.setText(conversation.getOtherUserName() != null ? conversation.getOtherUserName() : "User");
+            binding.tvLastMessage.setText(conversation.getLastMessage() != null ? conversation.getLastMessage() : "");
 
             if (conversation.getLastMessageTimestamp() != null) {
                 binding.tvTimestamp.setText(TimestampConverter.getTimeAgo(conversation.getLastMessageTimestamp()));
+            } else {
+                binding.tvTimestamp.setText("");
             }
 
             Glide.with(itemView.getContext())
