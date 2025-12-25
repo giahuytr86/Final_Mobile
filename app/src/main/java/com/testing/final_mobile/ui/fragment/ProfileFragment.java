@@ -9,6 +9,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -16,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.bumptech.glide.Glide;
 import com.google.firebase.auth.FirebaseAuth;
 import com.testing.final_mobile.R;
+import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.databinding.FragmentProfileBinding;
 import com.testing.final_mobile.ui.activity.SettingsActivity;
@@ -32,7 +34,7 @@ public class ProfileFragment extends Fragment {
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // This fragment always shows the current user's profile
+        // Fragment này luôn hiển thị profile của người dùng hiện tại
         profileUserId = FirebaseAuth.getInstance().getUid();
     }
 
@@ -63,9 +65,32 @@ public class ProfileFragment extends Fragment {
     }
 
     private void setupRecyclerView() {
-        postAdapter = new PostAdapter(postId -> viewModel.toggleLike(postId));
+        // Sửa lỗi: Triển khai đầy đủ interface thay vì dùng lambda
+        postAdapter = new PostAdapter(new PostAdapter.OnPostInteractionListener() {
+            @Override
+            public void onLikeClicked(String postId) {
+                viewModel.toggleLike(postId);
+            }
+
+            @Override
+            public void onDeleteClicked(Post post) {
+                showDeleteConfirmationDialog(post);
+            }
+        });
+        
         binding.rvProfileContent.setLayoutManager(new LinearLayoutManager(getContext()));
         binding.rvProfileContent.setAdapter(postAdapter);
+    }
+
+    private void showDeleteConfirmationDialog(Post post) {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Xóa bài viết")
+                .setMessage("Bạn có chắc chắn muốn xóa bài viết này không?")
+                .setPositiveButton("Xóa", (dialog, which) -> {
+                    viewModel.deletePost(post.getId());
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
     }
 
     private void observeViewModel() {
@@ -99,7 +124,7 @@ public class ProfileFragment extends Fragment {
                 .circleCrop()
                 .into(binding.ivProfileAvatar);
 
-        // Hide follow/message buttons as this is the user's own profile
+        // Ẩn nút message/follow vì đây là trang cá nhân của chính mình
         binding.btnMessage.setVisibility(View.GONE);
         binding.btnProfileCommand.setVisibility(View.GONE);
     }

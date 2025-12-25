@@ -214,7 +214,18 @@ public class PostRepository {
                     }
                 });
     }
-
+    public void deletePost(String postId) {
+        firestore.collection("posts").document(postId)
+                .delete()
+                .addOnSuccessListener(aVoid -> {
+                    // Firestore Listener sẽ tự động xóa bài này khỏi giao diện
+                    Log.d("PostRepository", "Bài viết đã được xóa");
+                    AppDatabase.databaseWriteExecutor.execute(() -> postDao.deletePostById(postId));
+                })
+                .addOnFailureListener(e -> {
+                    Log.e("PostRepository", "Lỗi khi xóa bài viết", e);
+                });
+    }
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm == null) return false;

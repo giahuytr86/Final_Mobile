@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -65,7 +66,25 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
 
         // TODO: Add listener for messages button
     }
+    @Override
+    public void onDeleteClicked(Post post) {    // Kiểm tra xem có phải bài viết của mình không (Tùy chọn)
+        String currentUserId = FirebaseAuth.getInstance().getUid();
+        if (post.getUserId().equals(currentUserId)) {
 
+            // Hiện thông báo xác nhận trước khi xóa
+            new androidx.appcompat.app.AlertDialog.Builder(getContext())
+                    .setTitle("Xóa bài viết")
+                    .setMessage("Bạn có chắc chắn muốn xóa bài viết này không?")
+                    .setPositiveButton("Xóa", (dialog, which) -> {
+                        viewModel.deletePost(post.getId()); // Gọi hàm xóa trong ViewModel
+                    })
+                    .setNegativeButton("Hủy", null)
+                    .show();
+
+        } else {
+            Toast.makeText(getContext(), "Bạn không có quyền xóa bài viết này", Toast.LENGTH_SHORT).show();
+        }
+    }
     private void observeViewModel() {
         viewModel.getAllPosts().observe(getViewLifecycleOwner(), posts -> {
             if (posts != null) {

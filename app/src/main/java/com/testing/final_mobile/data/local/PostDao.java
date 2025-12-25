@@ -25,6 +25,10 @@ public interface PostDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertAll(List<Post> posts);
 
+    //Deletes a post
+    @Query("DELETE FROM posts WHERE id = :postId")
+    void deletePostById(String postId);
+
     // Deletes all posts from the table.
     @Query("DELETE FROM posts")
     void deleteAll();

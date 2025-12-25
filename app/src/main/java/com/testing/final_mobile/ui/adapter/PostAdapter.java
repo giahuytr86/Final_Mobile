@@ -4,6 +4,7 @@ import android.content.Intent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.PopupMenu;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -24,8 +25,10 @@ import java.util.Objects;
 
 public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
 
+    // Interface duy nhất chứa tất cả các sự kiện tương tác
     public interface OnPostInteractionListener {
         void onLikeClicked(String postId);
+        void onDeleteClicked(Post post);
     }
 
     private final OnPostInteractionListener listener;
@@ -89,6 +92,28 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
                     .into(binding.ivUserAvatar);
 
             String currentUserId = FirebaseAuth.getInstance().getUid();
+            
+            // Hiển thị nút btnMore nếu là bài viết của chính mình
+            if (currentUserId != null && currentUserId.equals(post.getUserId())) {
+                binding.btnMore.setVisibility(View.VISIBLE);
+                binding.btnMore.setOnClickListener(v -> {
+                    PopupMenu popupMenu = new PopupMenu(v.getContext(), v);
+                    popupMenu.getMenu().add("Xóa bài viết");
+                    popupMenu.setOnMenuItemClickListener(item -> {
+                        if (item.getTitle().equals("Xóa bài viết")) {
+                            if (listener != null) {
+                                listener.onDeleteClicked(post);
+                            }
+                        }
+                        return true;
+                    });
+                    popupMenu.show();
+                });
+            } else {
+                binding.btnMore.setVisibility(View.GONE);
+            }
+
+            // Xử lý hiển thị icon Like
             if (currentUserId != null && post.getLikes().contains(currentUserId)) {
                 binding.ivLikeIcon.setImageResource(R.drawable.ic_heart_filled);
                 binding.ivLikeIcon.setColorFilter(ContextCompat.getColor(itemView.getContext(), R.color.red));
@@ -97,6 +122,7 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
                 binding.ivLikeIcon.setColorFilter(ContextCompat.getColor(itemView.getContext(), R.color.text_gray));
             }
 
+            // Xử lý ảnh bài viết
             if (post.getImageUrl() != null && !post.getImageUrl().isEmpty()) {
                 binding.ivPostImage.setVisibility(View.VISIBLE);
                 Glide.with(itemView.getContext())
@@ -104,8 +130,11 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
                         .placeholder(R.drawable.ic_image)
                         .error(R.drawable.ic_image)
                         .into(binding.ivPostImage);
-            };
+            } else {
+                binding.ivPostImage.setVisibility(View.GONE);
+            }
 
+            // Sự kiện click vào Profile
             View.OnClickListener profileClickListener = v -> {
                 Intent intent = new Intent(itemView.getContext(), ProfileActivity.class);
                 intent.putExtra(ProfileActivity.EXTRA_USER_ID, post.getUserId());
@@ -115,12 +144,14 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
             binding.ivUserAvatar.setOnClickListener(profileClickListener);
             binding.tvUserName.setOnClickListener(profileClickListener);
 
+            // Sự kiện Like
             binding.btnLike.setOnClickListener(v -> {
                 if (listener != null) {
                     listener.onLikeClicked(post.getId());
                 }
             });
 
+            // Sự kiện Share
             binding.btnShare.setOnClickListener(v -> {
                 Intent shareIntent = new Intent(Intent.ACTION_SEND);
                 shareIntent.setType("text/plain");
@@ -128,6 +159,7 @@ public class PostAdapter extends ListAdapter<Post, PostAdapter.PostViewHolder> {
                 itemView.getContext().startActivity(Intent.createChooser(shareIntent, "Share post via"));
             });
 
+            // Sự kiện click vào chi tiết bài viết
             itemView.setOnClickListener(v -> {
                 Intent intent = new Intent(itemView.getContext(), PostDetailActivity.class);
                 intent.putExtra(PostDetailActivity.EXTRA_POST_ID, post.getId());

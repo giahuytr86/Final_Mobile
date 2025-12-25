@@ -5,12 +5,14 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.bumptech.glide.Glide;
 import com.testing.final_mobile.R;
+import com.testing.final_mobile.data.model.Post;
 import com.testing.final_mobile.data.model.User;
 import com.testing.final_mobile.databinding.ActivityProfileBinding;
 import com.testing.final_mobile.ui.adapter.PostAdapter;
@@ -50,15 +52,40 @@ public class ProfileActivity extends AppCompatActivity {
 
     private void setupToolbar() {
         setSupportActionBar(binding.toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+            getSupportActionBar().setTitle("");
+        }
         binding.toolbar.setNavigationOnClickListener(v -> onBackPressed());
-        getSupportActionBar().setTitle("");
     }
 
     private void setupRecyclerView() {
-        postAdapter = new PostAdapter(postId -> viewModel.toggleLike(postId));
+        // Sửa lỗi: Triển khai Interface đầy đủ thay vì dùng lambda
+        postAdapter = new PostAdapter(new PostAdapter.OnPostInteractionListener() {
+            @Override
+            public void onLikeClicked(String postId) {
+                viewModel.toggleLike(postId);
+            }
+
+            @Override
+            public void onDeleteClicked(Post post) {
+                showDeleteConfirmationDialog(post);
+            }
+        });
+        
         binding.rvPosts.setLayoutManager(new LinearLayoutManager(this));
         binding.rvPosts.setAdapter(postAdapter);
+    }
+
+    private void showDeleteConfirmationDialog(Post post) {
+        new AlertDialog.Builder(this)
+                .setTitle("Xóa bài viết")
+                .setMessage("Bạn có chắc chắn muốn xóa bài viết này không?")
+                .setPositiveButton("Xóa", (dialog, which) -> {
+                    viewModel.deletePost(post.getId());
+                })
+                .setNegativeButton("Hủy", null)
+                .show();
     }
 
     private void observeViewModel() {
