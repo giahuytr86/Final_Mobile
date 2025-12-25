@@ -13,23 +13,18 @@ import java.util.List;
 @Dao
 public interface PostDao {
 
-    // Returns LiveData, which will automatically update the UI upon data changes.
     @Query("SELECT * FROM posts ORDER BY timestamp DESC")
     LiveData<List<Post>> getAllPosts();
 
-    // Returns a single post as LiveData.
     @Query("SELECT * FROM posts WHERE id = :postId")
     LiveData<Post> getPostById(String postId);
 
-    // Inserts a list of posts. If a post already exists, it will be replaced.
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insertAll(List<Post> posts);
 
-    //Deletes a post
     @Query("DELETE FROM posts WHERE id = :postId")
     void deletePostById(String postId);
 
-    // Deletes all posts from the table.
     @Query("DELETE FROM posts")
     void deleteAll();
 }

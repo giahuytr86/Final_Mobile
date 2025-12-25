@@ -100,9 +100,9 @@ public class ProfileFragment extends Fragment {
             postAdapter.submitList(posts);
         });
 
-        viewModel.isLoading().observe(getViewLifecycleOwner(), isLoading -> {
-            binding.progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
-        });
+//        viewModel.isLoading().observe(getViewLifecycleOwner(), isLoading -> {
+//            binding.progressBar.setVisibility(isLoading ? View.VISIBLE : View.GONE);
+//        });
 
         viewModel.getError().observe(getViewLifecycleOwner(), error -> {
             if (error != null) {
@@ -124,9 +124,9 @@ public class ProfileFragment extends Fragment {
                 .circleCrop()
                 .into(binding.ivProfileAvatar);
 
-        // Ẩn nút message/follow vì đây là trang cá nhân của chính mình
-        binding.btnMessage.setVisibility(View.GONE);
-        binding.btnProfileCommand.setVisibility(View.GONE);
+//        // Ẩn nút message/follow vì đây là trang cá nhân của chính mình
+//        binding.btnMessage.setVisibility(View.GONE);
+//        binding.btnProfileCommand.setVisibility(View.GONE);
     }
 
     @Override

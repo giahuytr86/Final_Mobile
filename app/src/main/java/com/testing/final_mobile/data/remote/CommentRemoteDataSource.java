@@ -2,12 +2,11 @@ package com.testing.final_mobile.data.remote;
 
 import android.util.Log;
 
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.firebase.firestore.DocumentReference;
-import com.google.firebase.firestore.FirebaseFirestoreException;
+import com.google.firebase.firestore.FieldValue;
+import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.Transaction;
 import com.testing.final_mobile.data.model.Comment;
 import com.testing.final_mobile.data.remote.core.FirestoreService;
 
@@ -22,26 +21,19 @@ public class CommentRemoteDataSource {
 
     private final FirestoreService firestoreService;
 
-    //<editor-fold desc="Interfaces">
     public interface OnCommentsFetchedListener {
         void onCommentsFetched(List<Comment> comments);
         void onError(Exception e);
     }
 
     public interface OnCommentAddedListener {
-        void onCommentAdded(DocumentReference documentReference);
+        void onCommentAdded();
         void onError(Exception e);
     }
-
-    // OnCommentLikeUpdatedListener is removed as the feature is no longer supported
-
-    //</editor-fold>
 
     public CommentRemoteDataSource(FirestoreService firestoreService) {
         this.firestoreService = firestoreService;
     }
-
-    // toggleLikeStatus method has been completely removed.
 
     public void fetchCommentsForPost(String postId, OnCommentsFetchedListener listener) {
         if (postId == null || postId.trim().isEmpty()) {
@@ -77,16 +69,26 @@ public class CommentRemoteDataSource {
             listener.onError(new IllegalArgumentException("Post ID cannot be null or empty."));
             return;
         }
-        String commentPath = POST_COLLECTION + "/" + newComment.getPostId() + "/" + COMMENT_SUB_COLLECTION;
-        firestoreService.addDocument(commentPath, newComment, task -> {
-            if (task.isSuccessful()) {
-                listener.onCommentAdded(task.getResult());
-            } else {
-                Log.e(TAG, "Error adding comment", task.getException());
-                if (task.getException() != null) {
-                    listener.onError(task.getException());
-                }
-            }
+
+        FirebaseFirestore db = FirebaseFirestore.getInstance();
+        DocumentReference postRef = db.collection(POST_COLLECTION).document(newComment.getPostId());
+        DocumentReference commentRef = postRef.collection(COMMENT_SUB_COLLECTION).document();
+
+        // Sử dụng Transaction để đảm bảo việc thêm comment và tăng count diễn ra đồng thời
+        db.runTransaction(transaction -> {
+            // 1. Thêm comment mới
+            transaction.set(commentRef, newComment);
+            
+            // 2. Tăng trường commentCount trong bài viết
+            // Lưu ý: Đảm bảo field trong Firestore của bạn là 'commentCount'
+            transaction.update(postRef, "commentCount", FieldValue.increment(1));
+            
+            return null;
+        }).addOnSuccessListener(aVoid -> {
+            listener.onCommentAdded();
+        }).addOnFailureListener(e -> {
+            Log.e(TAG, "Error adding comment with transaction", e);
+            listener.onError(e);
         });
     }
 }

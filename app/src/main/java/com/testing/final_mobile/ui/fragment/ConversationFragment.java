@@ -56,8 +56,10 @@ public class ConversationFragment extends Fragment {
             if (conversations != null && !conversations.isEmpty()) {
                 adapter.submitList(conversations);
                 binding.rvConversations.setVisibility(View.VISIBLE);
+                binding.tvEmptyState.setVisibility(View.GONE);
             } else {
                 binding.rvConversations.setVisibility(View.GONE);
+                binding.tvEmptyState.setVisibility(View.VISIBLE);
             }
         });
     }

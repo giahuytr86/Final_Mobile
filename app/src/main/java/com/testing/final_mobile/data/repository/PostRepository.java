@@ -14,6 +14,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
+import com.google.firebase.firestore.FieldValue;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.Query;
 import com.testing.final_mobile.data.local.AppDatabase;
@@ -49,6 +50,16 @@ public class PostRepository {
         void onError(Exception e);
     }
 
+    public PostRepository(Application application) {
+        AppDatabase database = AppDatabase.getDatabase(application);
+        this.postDao = database.postDao();
+        this.remoteDataSource = new PostRemoteDataSource(new FirestoreService());
+        this.storageService = new StorageService();
+        this.application = application;
+        this.firestore = FirebaseFirestore.getInstance();
+        this.auth = FirebaseAuth.getInstance();
+    }
+
     public LiveData<List<Post>> getPostsByUserId(String userId) {
         MutableLiveData<List<Post>> userPosts = new MutableLiveData<>();
         firestore.collection("posts")
@@ -60,16 +71,6 @@ public class PostRepository {
                     }
                 });
         return userPosts;
-    }
-
-    public PostRepository(Application application) {
-        AppDatabase database = AppDatabase.getDatabase(application);
-        this.postDao = database.postDao();
-        this.remoteDataSource = new PostRemoteDataSource(new FirestoreService());
-        this.storageService = new StorageService();
-        this.application = application;
-        this.firestore = FirebaseFirestore.getInstance();
-        this.auth = FirebaseAuth.getInstance();
     }
 
     public void createPost(String content, @Nullable Uri imageUri, OnPostCreatedListener listener) {
@@ -136,6 +137,13 @@ public class PostRepository {
         });
     }
 
+    public void incrementCommentCount(String postId) {
+        firestore.collection("posts").document(postId)
+                .update("commentCount", FieldValue.increment(1))
+                .addOnSuccessListener(aVoid -> Log.d(TAG, "Comment count incremented"))
+                .addOnFailureListener(e -> Log.e(TAG, "Error incrementing comment count", e));
+    }
+
     public void searchPosts(String searchTerm, MutableLiveData<List<Post>> searchResults, MutableLiveData<String> error) {
         remoteDataSource.searchPosts(searchTerm, new PostRemoteDataSource.OnPostsSearchedListener() {
             @Override
@@ -160,7 +168,6 @@ public class PostRepository {
         remoteDataSource.toggleLikeStatus(postId, currentUserId, new PostRemoteDataSource.OnPostLikeUpdatedListener() {
             @Override
             public void onPostLikeUpdated() {
-                // No manual refresh needed because of SnapshotListener
                 listener.onPostLiked();
             }
 
@@ -189,7 +196,6 @@ public class PostRepository {
                 .orderBy("timestamp", Query.Direction.DESCENDING)
                 .addSnapshotListener((value, error) -> {
                     if (error != null) {
-                        Log.e(TAG, "Error listening for posts", error);
                         isListeningAllPosts = false;
                         return;
                     }
@@ -214,11 +220,11 @@ public class PostRepository {
                     }
                 });
     }
+
     public void deletePost(String postId) {
         firestore.collection("posts").document(postId)
                 .delete()
                 .addOnSuccessListener(aVoid -> {
-                    // Firestore Listener sẽ tự động xóa bài này khỏi giao diện
                     Log.d("PostRepository", "Bài viết đã được xóa");
                     AppDatabase.databaseWriteExecutor.execute(() -> postDao.deletePostById(postId));
                 })
@@ -226,6 +232,7 @@ public class PostRepository {
                     Log.e("PostRepository", "Lỗi khi xóa bài viết", e);
                 });
     }
+
     private boolean isNetworkAvailable() {
         ConnectivityManager cm = (ConnectivityManager) application.getSystemService(Context.CONNECTIVITY_SERVICE);
         if (cm == null) return false;
