@@ -55,22 +55,27 @@
             android:background="@drawable/bg_input_rounded"
             android:gravity="center_vertical"
             android:paddingStart="16dp"
-            android:text="What\'s on your mind?"
+            android:text="What's on your mind?"
             android:textColor="@color/text_gray"
             android:textSize="14sp" />
 
-        <!-- Image icon removed as it is no longer supported -->
-
     </LinearLayout>
 
-    <!-- Feed List -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/rvFeed"
+    <!-- SwipeRefreshLayout bao bọc RecyclerView -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipeRefreshLayout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="8dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/layoutCreatePost" />
+        app:layout_constraintTop_toBottomOf="@id/layoutCreatePost">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvFeed"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

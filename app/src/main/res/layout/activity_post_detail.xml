@@ -16,7 +16,7 @@
         <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
+            android:layout_height="match_parent"
             app:navigationIcon="@drawable/ic_arrow_left"
             app:title="Post" />
 
@@ -144,7 +144,7 @@
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvComments"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_height="852dp"
                 android:nestedScrollingEnabled="false"
                 android:padding="16dp"
                 tools:listitem="@layout/item_comment" />

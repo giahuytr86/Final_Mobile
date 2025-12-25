@@ -26,6 +26,9 @@ public class HomeViewModel extends AndroidViewModel {
         allPosts = postRepository.getAllPosts();
     }
 
+    public void refreshData() {
+        postRepository.getAllPosts();
+    }
     public void deletePost(String postId) {
         postRepository.deletePost(postId);
     }

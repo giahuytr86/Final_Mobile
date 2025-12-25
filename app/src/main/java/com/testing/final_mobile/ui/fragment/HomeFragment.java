@@ -42,6 +42,7 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
         viewModel = new ViewModelProvider(this).get(HomeViewModel.class);
 
         setupRecyclerView();
+        setupSwipeRefresh(); // Gọi hàm xử lý refresh
         setupClickListeners();
         observeViewModel();
     }
@@ -58,33 +59,44 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
         binding.rvFeed.setAdapter(postAdapter);
     }
 
+    private void setupSwipeRefresh() {
+        binding.swipeRefreshLayout.setOnRefreshListener(() -> {
+            // Gọi lại hàm lấy dữ liệu để đảm bảo danh sách được cập nhật
+            viewModel.getAllPosts();
+
+            // Tắt hiệu ứng xoay sau 1 giây (tạo cảm giác mượt mà như Facebook)
+            binding.swipeRefreshLayout.postDelayed(() -> {
+                if (binding != null) {
+                    binding.swipeRefreshLayout.setRefreshing(false);
+                }
+            }, 1000);
+        });
+    }
+
     private void setupClickListeners() {
         binding.layoutCreatePost.setOnClickListener(v -> {
             Intent intent = new Intent(getActivity(), CreatePostActivity.class);
             startActivity(intent);
         });
-
-        // TODO: Add listener for messages button
     }
+
     @Override
-    public void onDeleteClicked(Post post) {    // Kiểm tra xem có phải bài viết của mình không (Tùy chọn)
+    public void onDeleteClicked(Post post) {
         String currentUserId = FirebaseAuth.getInstance().getUid();
         if (post.getUserId().equals(currentUserId)) {
-
-            // Hiện thông báo xác nhận trước khi xóa
             new androidx.appcompat.app.AlertDialog.Builder(getContext())
                     .setTitle("Xóa bài viết")
                     .setMessage("Bạn có chắc chắn muốn xóa bài viết này không?")
                     .setPositiveButton("Xóa", (dialog, which) -> {
-                        viewModel.deletePost(post.getId()); // Gọi hàm xóa trong ViewModel
+                        viewModel.deletePost(post.getId());
                     })
                     .setNegativeButton("Hủy", null)
                     .show();
-
         } else {
             Toast.makeText(getContext(), "Bạn không có quyền xóa bài viết này", Toast.LENGTH_SHORT).show();
         }
     }
+
     private void observeViewModel() {
         viewModel.getAllPosts().observe(getViewLifecycleOwner(), posts -> {
             if (posts != null) {
@@ -93,7 +105,9 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
         });
 
         viewModel.error.observe(getViewLifecycleOwner(), error -> {
-            // Handle error display
+            if (error != null) {
+                Toast.makeText(getContext(), error, Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -103,7 +117,7 @@ public class HomeFragment extends Fragment implements PostAdapter.OnPostInteract
             com.google.firebase.firestore.FirebaseFirestore.getInstance()
                     .collection("users").document(uid).get()
                     .addOnSuccessListener(documentSnapshot -> {
-                        if (isAdded() && binding != null) { // Kiểm tra fragment còn tồn tại không
+                        if (isAdded() && binding != null) {
                             String avatarUrl = documentSnapshot.getString("avatarUrl");
                             Glide.with(this)
                                     .load(avatarUrl)
